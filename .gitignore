@@ -2,3 +2,8 @@
 /.library_mapping.xml
 /.project
 /.settings/
+
+# ignore Xilinx stuff
+_pace.ucf
+*.lfp
+
