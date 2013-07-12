@@ -63,12 +63,12 @@ NET "EI[3]"  LOC = M13; # RL35
 NET "EI[2]"  LOC = N16; # RL37
 NET "EI[1]"  LOC = N14; # RL39
 
-NET "EO[6]" LOC = G13; # RR18
-NET "EO[5]" LOC = G13; # RR19
-NET "EO[4]" LOC = G13; # RR21
-NET "EO[3]" LOC = G13; # RR23
-NET "EO[2]" LOC = G13; # RR26
-NET "EO[1]" LOC = G13; # RR27
+NET "EO[6]" LOC = J13; # RR18
+NET "EO[5]" LOC = J14; # RR19
+NET "EO[4]" LOC = K12; # RR21
+NET "EO[3]" LOC = K13; # RR23
+NET "EO[2]" LOC = P14; # RR26
+NET "EO[1]" LOC = P15; # RR27
 
 
 ####################
