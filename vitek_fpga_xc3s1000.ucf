@@ -34,6 +34,12 @@ NET "LED_module"       LOC = "N6";
 # Bank 2 (Sheet 3/4)
 #
 ####################
+NET "D_OUT[2]" LOC = B16; # RL1
+NET "D_OUT[1]" LOC = C16; # RL4
+NET "D_OUT[3]" LOC = D16; # RL8
+NET "D_OUT[5]" LOC = H16; # RL21
+NET "D_OUT[4]" LOC = G12; # RR16
+
 NET "O_NIM[4]" LOC = D14; # RL2
 NET "O_NIM[3]" LOC = C15; # RL3
 NET "O_NIM[2]" LOC = E13; # RL6
