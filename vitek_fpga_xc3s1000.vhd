@@ -21,11 +21,11 @@ entity vitek_fpga_xc3s1000 is
 		I_NIM            : in    std_logic_vector(4 downto 0); -- NIM input
 		EO               : out   std_logic_vector(16 downto 1); -- ECL output
 		EI               : in    std_logic_vector(16 downto 1); -- ECL input
-		A_X              : inout std_logic_vector(8 downto 1); -- AVR microprocessor
+		A_X              : out std_logic_vector(8 downto 1); -- AVR microprocessor
 		OHO_RCLK         : out   std_logic; -- 3x7 segment display
 		OHO_SCLK         : out   std_logic; -- 3x7 segment display
 		OHO_SER          : out   std_logic; -- 3x7 segment display
-		V_V              : inout std_logic_vector(10 downto 1); -- another VITEK card
+		V_V              : out std_logic_vector(10 downto 1); -- another VITEK card
 
 		-- delay stuff
 		D_IN             : out   std_logic_vector(5 downto 1); -- to delay input
