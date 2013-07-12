@@ -7,6 +7,26 @@
 # The referenced sheets correspond to Trenz schematic "SCH-TE0140-04.pdf",
 # see here: http://www.trenz-electronic.de/fileadmin/docs/Trenz_Electronic/TE0140_series/TE0140/documents/SCH-TE0140-04.pdf
 
+###############################
+#
+# Signals local to Trenz Module
+#
+###############################
+
+# Mandatory UTMI signals to get a clock
+NET "CLK"              LOC = "D9";
+NET "UTMI_databus16_8" LOC = "B14";
+
+# UTMI signals only used with USB function
+NET "UTMI_opmode1"     LOC = "C6";
+NET "UTMI_reset"       LOC = "B4";
+NET "UTMI_termselect"  LOC = "B6";
+NET "UTMI_txvalid"     LOC = "B12";
+NET "UTMI_xcvrselect"  LOC = "D6";
+
+# LED on Trenz Micromodule
+NET "LED_module"       LOC = "N6";
+
 ####################
 #
 # U$1IO2
