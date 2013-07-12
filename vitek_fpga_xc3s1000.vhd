@@ -23,7 +23,8 @@ entity vitek_fpga_xc3s1000 is
 		D_Q      : out   std_logic;
 		D_MS     : out   std_logic;
 		D_LE     : out   std_logic;
-
+		D_CLK    : out   std_logic;
+		
 		-- VME / CPLD communication
 		F_D      : inout std_logic_vector(31 downto 0); -- VME Data
 		C_F      : inout std_logic_vector(7 downto 1); -- to CPLD

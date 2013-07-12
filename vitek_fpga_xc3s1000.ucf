@@ -155,7 +155,7 @@ NET "I_NIM[4]" LOC = D12; # RR10 Bank1
 NET "D_IN[5]"  LOC = T14; # RR29 Bank4
 NET "D_Q"      LOC = R13; # RR30 Bank4
 NET "D_MS"     LOC = T13; # RR32 Bank4
-NET "D_LF"     LOC = R12; # RR33 Bank4
+NET "D_LE"     LOC = R12; # RR33 Bank4
 NET "D_CLK"    LOC = T12; # RR34 Bank4
 
 NET "OHO_RCLK" LOC = R11; # RR36 Bank4
