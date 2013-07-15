@@ -45,7 +45,6 @@ begin
 	fpga_finished <= C_F_in(1);
 
 	C_F_out <= (
-			4      => V_DS(1),          -- high if odd byte requested (needed for consistent single byte writes!)
 			5      => V_WRITE,          -- high if we should output something on databus (read cycle)
 			6      => fpga_start,       -- high if FPGA can start working now
 			others => '0'               -- others are unused
@@ -90,9 +89,10 @@ begin
 				end if;
 
 			when s_wait_for_datastrobe =>
-				-- single byte transfers and double byte transfers 
-				-- should be supported
-				if V_DS(0) = '0' or V_DS(1) = '0' then
+				-- only double byte transfers are currently supported
+				-- single byte write attempts will trigger a timeout 
+				-- since DTACK is never asserted
+				if V_DS(0) = '0' and V_DS(1) = '0' then
 					-- we may drive the VME bus now (or read it)
 					B_DIR      <= V_WRITE;
 					fpga_start <= '1';
@@ -115,8 +115,9 @@ begin
 				-- wait until master has seen the DTACK
 				if V_DS(0) = '1' and V_DS(1) = '1' then
 					-- be conservative and release the DTACK only in the idle state
-					-- but turn the transceiver to High-Z now
-					B_DIR      <= '0';
+					-- but turn the transceiver to High-Z on both sides already now
+					-- by disabling it for one clock cycle
+					B_OE       <= '1';
 					fpga_start <= '0';
 					state      <= s_idle;
 				end if;

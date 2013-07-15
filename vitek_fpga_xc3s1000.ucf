@@ -6,13 +6,11 @@
 #
 # The referenced sheets correspond to Trenz schematic "SCH-TE0140-04.pdf",
 # see here: http://www.trenz-electronic.de/fileadmin/docs/Trenz_Electronic/TE0140_series/TE0140/documents/SCH-TE0140-04.pdf
-
 ###############################
 #
 # Signals local to Trenz Module
 #
 ###############################
-
 # Mandatory UTMI signals to get a clock
 NET "CLK"              LOC = "D9";
 NET "UTMI_databus16_8" LOC = "B14";
@@ -39,12 +37,10 @@ NET "D_OUT[1]" LOC = C16; # RL4
 NET "D_OUT[3]" LOC = D16; # RL8
 NET "D_OUT[5]" LOC = H16; # RL21
 NET "D_OUT[4]" LOC = G12; # RR16
-
 NET "O_NIM[4]" LOC = D14; # RL2
 NET "O_NIM[3]" LOC = C15; # RL3
 NET "O_NIM[2]" LOC = E13; # RL6
 NET "O_NIM[1]" LOC = D15; # RL7
-
 NET "EO[16]" LOC = E14; # RL9
 NET "EO[15]" LOC = E15; # RL11
 NET "EO[14]" LOC = E16; # RL12
@@ -52,16 +48,13 @@ NET "EO[13]" LOC = F14; # RL13
 NET "EO[12]" LOC = F15; # RL14
 NET "EO[11]" LOC = G14; # RL15
 NET "EO[10]" LOC = G15; # RL16
-
 NET "EI[16]" LOC = G16; # RL18
 NET "EI[15]" LOC = H13; # RL19
 NET "EI[14]" LOC = H14; # RL20
 NET "EI[13]" LOC = H15; # RL22
-
 NET "EO[9]"  LOC = F13; # RR13
 NET "EO[8]"  LOC = F12; # RR14
 NET "EO[7]"  LOC = G13; # RR15
-
 
 ####################
 #
@@ -75,7 +68,6 @@ NET "D_IN[2]" LOC = R16; # RR25
 NET "D_D"     LOC = L12; # RR22
 NET "D_IN[1]" LOC = J16; # RL24
 NET "D_IN[3]" LOC = N15; # RL38
-
 NET "EI[12]" LOC = K14; # RL25
 NET "EI[11]" LOC = K15; # RL26
 NET "EI[10]" LOC = K16; # RL27
@@ -88,14 +80,12 @@ NET "EI[4]"  LOC = L13; # RL34
 NET "EI[3]"  LOC = M13; # RL35
 NET "EI[2]"  LOC = N16; # RL37
 NET "EI[1]"  LOC = N14; # RL39
-
 NET "EO[6]" LOC = J13; # RR18
 NET "EO[5]" LOC = J14; # RR19
 NET "EO[4]" LOC = K12; # RR21
 NET "EO[3]" LOC = K13; # RR23
 NET "EO[2]" LOC = P14; # RR26
 NET "EO[1]" LOC = P15; # RR27
-
 
 ####################
 #
@@ -106,10 +96,8 @@ NET "EO[1]" LOC = P15; # RR27
 ####################
 NET "F_D[8]"  LOC = J1; # LR24
 NET "F_D[5]"  LOC = N1; # LR37
-
 NET "V_V[9]"  LOC = M4; # LL25
 NET "V_V[10]" LOC = P2; # LL26
-
 NET "F_D[0]"  LOC = J2; # LR25
 NET "F_D[9]"  LOC = K2; # LR26
 NET "F_D[1]"  LOC = K1; # LR27
@@ -123,7 +111,6 @@ NET "F_D[13]" LOC = L5; # LR35
 NET "F_D[14]" LOC = N2; # LR38
 NET "F_D[6]"  LOC = N3; # LR39
 
-
 ####################
 #
 # U$1IO7
@@ -136,7 +123,6 @@ NET "C_F_out[4]" LOC = B1; # LR1
 NET "C_F_out[5]" LOC = C3; # LR2
 NET "C_F_out[6]" LOC = E3; # LR9
 NET "C_F_out[7]" LOC = H1; # LR20
-
 NET "I_A[1]"  LOC = C2; # LR3
 NET "I_A[2]"  LOC = D3; # LR6
 NET "I_A[3]"  LOC = D2; # LR7
@@ -147,18 +133,14 @@ NET "I_A[7]"  LOC = F3; # LR13
 NET "I_A[8]"  LOC = F2; # LR14
 NET "I_A[9]"  LOC = G4; # LR15
 NET "I_A[10]" LOC = G3; # LR16
-
 NET "C_F_in[1]"  LOC = G1; # LR18
 NET "C_F_in[2]"  LOC = G2; # LR19
-
 NET "F_D[7]"  LOC = H3; # LR21
 NET "F_D[15]" LOC = H4; # LR22
-
 NET "A_X[5]"  LOC = E4; # LL13
 NET "A_X[6]"  LOC = F4; # LL14
 NET "A_X[7]"  LOC = F5; # LL15
 NET "A_X[8]"  LOC = G5; # LL16
-
 
 #######################
 #
@@ -172,22 +154,18 @@ NET "A_X[1]" LOC = D8; # LL7  Bank0
 NET "A_X[2]" LOC = D7; # LL8  Bank0
 NET "A_X[3]" LOC = E7; # LL9  Bank0
 NET "A_X[4]" LOC = E6; # LL12 Bank0
-
 NET "I_NIM[1]" LOC = D10; # RR7  Bank1
 NET "I_NIM[2]" LOC = E10; # RR8  Bank1
 NET "I_NIM[3]" LOC = D11; # RR9  Bank1
 NET "I_NIM[4]" LOC = D12; # RR10 Bank1
-
 NET "D_IN[5]"  LOC = T14; # RR29 Bank4
 NET "D_Q"      LOC = R13; # RR30 Bank4
 NET "D_MS"     LOC = T13; # RR32 Bank4
 NET "D_LE"     LOC = R12; # RR33 Bank4
 NET "D_CLK"    LOC = T12; # RR34 Bank4
-
 NET "OHO_RCLK" LOC = R11; # RR36 Bank4
 NET "OHO_SCLK" LOC = R9;  # RR37 Bank4
 NET "OHO_SER"  LOC = T9;  # RR38 Bank4
-
 NET "V_V[8]"   LOC = P5; # LL29 Bank5
 NET "V_V[7]"   LOC = R5; # LL30 Bank5
 NET "V_V[6]"   LOC = P6; # LL32 Bank5
@@ -197,3 +175,7 @@ NET "V_V[3]"   LOC = T8; # LL36 Bank5
 NET "V_V[2]"   LOC = N8; # LL37 Bank5
 NET "V_V[1]"   LOC = P8; # LL38 Bank5
 
+
+#Created by Constraints Editor (xc3s1000-ft256-4) - 2013/07/15
+NET "CLK" TNM_NET = CLK;
+TIMESPEC TS_CLK = PERIOD "CLK" 60 MHz HIGH 50%;
