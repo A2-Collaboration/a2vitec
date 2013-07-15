@@ -131,11 +131,11 @@ NET "F_D[6]"  LOC = N3; # LR39
 # Bank 7 (Sheet 3/4)
 #
 ####################
-NET "C_F[3]" LOC = C1; # LR4
-NET "C_F[4]" LOC = B1; # LR1
-NET "C_F[5]" LOC = C3; # LR2
-NET "C_F[6]" LOC = E3; # LR9
-NET "C_F[7]" LOC = H1; # LR20
+NET "C_F_in[3]" LOC = C1; # LR4
+NET "C_F_out[4]" LOC = B1; # LR1
+NET "C_F_out[5]" LOC = C3; # LR2
+NET "C_F_out[6]" LOC = E3; # LR9
+NET "C_F_out[7]" LOC = H1; # LR20
 
 NET "I_A[1]"  LOC = C2; # LR3
 NET "I_A[2]"  LOC = D3; # LR6
@@ -148,8 +148,8 @@ NET "I_A[8]"  LOC = F2; # LR14
 NET "I_A[9]"  LOC = G4; # LR15
 NET "I_A[10]" LOC = G3; # LR16
 
-NET "C_F[1]"  LOC = G1; # LR18
-NET "C_F[2]"  LOC = G2; # LR19
+NET "C_F_in[1]"  LOC = G1; # LR18
+NET "C_F_in[2]"  LOC = G2; # LR19
 
 NET "F_D[7]"  LOC = H3; # LR21
 NET "F_D[15]" LOC = H4; # LR22

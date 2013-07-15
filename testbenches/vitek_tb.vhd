@@ -10,21 +10,22 @@ end entity vitek_tb;
 
 architecture arch1 of vitek_tb is
 	component vitek_cpld_xc9536
-		port(A_CLK     : out   std_logic;
-			   V_SYSCLK  : in    std_logic;
-			   V_DS      : in    std_logic_vector(1 downto 0);
-			   V_WRITE   : in    std_logic;
-			   V_LWORD   : in    std_logic;
-			   V_AS      : in    std_logic;
-			   DTACK     : in    std_logic;
-			   I_AM      : in    std_logic_vector(5 downto 0);
-			   I_A       : in    std_logic_vector(15 downto 11);
-			   C_F       : inout std_logic_vector(7 downto 1);
-			   B_OE      : in    std_logic;
-			   B_DIR     : in    std_logic;
-			   PORT_READ : in    std_logic;
-			   PORT_CLK  : in    std_logic;
-			   SWITCH1   : in    std_logic_vector(3 downto 0));
+		port(A_CLK     : out std_logic;
+			   V_SYSCLK  : in  std_logic;
+			   V_DS      : in  std_logic_vector(1 downto 0);
+			   V_WRITE   : in  std_logic;
+			   V_LWORD   : in  std_logic;
+			   V_AS      : in  std_logic;
+			   DTACK     : out std_logic;
+			   I_AM      : in  std_logic_vector(5 downto 0);
+			   I_A       : in  std_logic_vector(15 downto 11);
+			   C_F_in    : in  std_logic_vector(3 downto 1);
+			   C_F_out   : out std_logic_vector(7 downto 4);
+			   B_OE      : out std_logic;
+			   B_DIR     : out std_logic;
+			   PORT_READ : in  std_logic;
+			   PORT_CLK  : in  std_logic;
+			   SWITCH1   : in  std_logic_vector(3 downto 0));
 	end component vitek_cpld_xc9536;
 
 	component vitek_fpga_xc3s1000
@@ -53,15 +54,20 @@ architecture arch1 of vitek_tb is
 			   D_LE             : out   std_logic;
 			   D_CLK            : out   std_logic;
 			   F_D              : inout std_logic_vector(31 downto 0);
-			   C_F              : inout std_logic_vector(7 downto 1);
+			   C_F_in           : out   std_logic_vector(3 downto 1);
+			   C_F_out          : in    std_logic_vector(7 downto 4);
+
 			   I_A              : in    std_logic_vector(10 downto 1));
 	end component vitek_fpga_xc3s1000;
 
-	constant period : time := 1000/60 ns; -- 60MHz clock
+	constant period : time := 1000 / 60 ns; -- 60MHz clock (from UTMI)
 	signal clk      : std_logic;
 
+	constant period_vme : time := 1000 / 16 ns; -- 16MHz clock (from VMEbus)
+	signal clk_vme      : std_logic;
+
 	-- CPLD signals
-	signal V_SYSCLK  : std_logic;
+	signal A_CLK     : std_logic;
 	signal V_DS      : std_logic_vector(1 downto 0);
 	signal V_WRITE   : std_logic;
 	signal V_LWORD   : std_logic;
@@ -69,7 +75,8 @@ architecture arch1 of vitek_tb is
 	signal DTACK     : std_logic;
 	signal I_AM      : std_logic_vector(5 downto 0);
 	signal I_A       : std_logic_vector(15 downto 1);
-	signal C_F       : std_logic_vector(7 downto 1);
+	signal C_F_in    : std_logic_vector(3 downto 1);
+	signal C_F_out   : std_logic_vector(7 downto 4);
 	signal B_OE      : std_logic;
 	signal B_DIR     : std_logic;
 	signal PORT_READ : std_logic;
@@ -91,11 +98,18 @@ begin
 		wait for period / 2;
 	end process clock_driver;
 
+	clock_driver_vme : process
+	begin
+		clk_vme <= '0';
+		wait for period_vme / 2;
+		clk_vme <= '1';
+		wait for period_vme / 2;
+	end process clock_driver_vme;
+
 	-- instantiate CPLD
-	V_SYSCLK <= '0';                    -- VME Bus clock not used
 	CPLD_1 : vitek_cpld_xc9536
-		port map(A_CLK     => open,     -- seems to drive VME FlipFlops
-			       V_SYSCLK  => V_SYSCLK,
+		port map(A_CLK     => A_CLK,
+			       V_SYSCLK  => clk_vme,
 			       V_DS      => V_DS,
 			       V_WRITE   => V_WRITE,
 			       V_LWORD   => V_LWORD,
@@ -103,7 +117,8 @@ begin
 			       DTACK     => DTACK,
 			       I_AM      => I_AM,
 			       I_A       => I_A(15 downto 11),
-			       C_F       => C_F,
+			       C_F_in    => C_F_in,
+			       C_F_out   => C_F_out,
 			       B_OE      => B_OE,
 			       B_DIR     => B_DIR,
 			       PORT_READ => PORT_READ,
@@ -140,9 +155,11 @@ begin
 			       D_LE             => open,
 			       D_CLK            => open,
 			       F_D              => F_D,
-			       C_F              => C_F,
+			       C_F_in           => C_F_in,
+			       C_F_out          => C_F_out,
 			       I_A              => I_A(10 downto 1));
 
--- now work on the VME bus
+-- now work on the VME bus as a master
+
 
 end architecture arch1;

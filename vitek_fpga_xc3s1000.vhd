@@ -21,11 +21,11 @@ entity vitek_fpga_xc3s1000 is
 		I_NIM            : in    std_logic_vector(4 downto 0); -- NIM input
 		EO               : out   std_logic_vector(16 downto 1); -- ECL output
 		EI               : in    std_logic_vector(16 downto 1); -- ECL input
-		A_X              : out std_logic_vector(8 downto 1); -- AVR microprocessor
+		A_X              : out   std_logic_vector(8 downto 1); -- AVR microprocessor
 		OHO_RCLK         : out   std_logic; -- 3x7 segment display
 		OHO_SCLK         : out   std_logic; -- 3x7 segment display
 		OHO_SER          : out   std_logic; -- 3x7 segment display
-		V_V              : out std_logic_vector(10 downto 1); -- another VITEK card
+		V_V              : out   std_logic_vector(10 downto 1); -- another VITEK card
 
 		-- delay stuff
 		D_IN             : out   std_logic_vector(5 downto 1); -- to delay input
@@ -37,8 +37,9 @@ entity vitek_fpga_xc3s1000 is
 		D_CLK            : out   std_logic;
 
 		-- VME / CPLD communication
-		F_D              : inout std_logic_vector(31 downto 0); -- VME Data
-		C_F              : inout std_logic_vector(7 downto 1); -- to CPLD
+		F_D              : inout std_logic_vector(15 downto 0); -- VME Data (must be tri-state!)
+		C_F_in           : out   std_logic_vector(3 downto 1); -- to CPLD (= "in" port there)
+		C_F_out          : in    std_logic_vector(7 downto 4); -- from CPLD (= "out" port there)
 		I_A              : in    std_logic_vector(10 downto 1) -- VME address		
 	);
 end vitek_fpga_xc3s1000;
@@ -55,7 +56,15 @@ begin
 	UTMI_opmode1     <= '0';
 	UTMI_txvalid     <= '0';
 
-	-- turn off the LED
+	-- turn off the LED (active low)
 	LED_module <= '1';
+
+	-- currently unused outputs
+	A_X      <= (others => '0');        -- AVR microprocessor
+	OHO_RCLK <= '0';                    -- 3x7 segment display
+	OHO_SCLK <= '0';                    -- 3x7 segment display
+	OHO_SER  <= '0';                    -- 3x7 segment display
+	V_V      <= (others => '0');        -- another VITEK card
+
 end arch1;
 
