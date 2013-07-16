@@ -82,21 +82,21 @@ architecture arch1 of vitek_tb is
 	signal V_SYSCLK     : std_logic;
 
 	-- CPLD signals
-	signal A_CLK      : std_logic;
-	signal V_DS       : std_logic_vector(1 downto 0);
-	signal V_WRITE    : std_logic;
-	signal V_LWORD    : std_logic;
-	signal V_AS       : std_logic;
-	signal DTACK      : std_logic;
-	signal I_AM, V_AM : std_logic_vector(5 downto 0);
-	signal I_A, V_A   : std_logic_vector(15 downto 1) := (others => '0');
-	signal C_F_in     : std_logic_vector(3 downto 1);
-	signal C_F_out    : std_logic_vector(7 downto 4);
-	signal B_OE       : std_logic;
-	signal B_DIR      : std_logic;
-	signal PORT_READ  : std_logic;
-	signal PORT_CLK   : std_logic;
-	signal SWITCH1    : std_logic_vector(3 downto 0);
+	signal A_CLK          : std_logic;
+	signal V_DS           : std_logic_vector(1 downto 0);
+	signal V_WRITE        : std_logic;
+	signal V_LWORD        : std_logic;
+	signal V_AS           : std_logic;
+	signal DTACK, V_DTACK : std_logic;
+	signal I_AM, V_AM     : std_logic_vector(5 downto 0);
+	signal I_A, V_A       : std_logic_vector(15 downto 1) := (others => '0');
+	signal C_F_in         : std_logic_vector(3 downto 1);
+	signal C_F_out        : std_logic_vector(7 downto 4);
+	signal B_OE           : std_logic;
+	signal B_DIR          : std_logic;
+	signal PORT_READ      : std_logic;
+	signal PORT_CLK       : std_logic;
+	signal SWITCH1        : std_logic_vector(3 downto 0);
 
 	-- FPGA signals
 	signal F_D, V_D : std_logic_vector(15 downto 0);
@@ -122,6 +122,7 @@ begin
 	end process clock_driver_vme;
 
 	-- instantiate CPLD
+	V_DTACK <= not DTACK; -- there's a not in the schematics!
 	CPLD_1 : vitek_cpld_xc9536
 		port map(A_CLK     => A_CLK,
 			       V_SYSCLK  => V_SYSCLK,
@@ -192,28 +193,194 @@ begin
 		port map(clk => A_CLK,
 			       D   => V_AM,
 			       Q   => I_AM);
-	
-	
+
 	-- now work on the VME bus as a master
 	simu : process is
+		constant test_word1 : std_logic_vector(15 downto 0) := x"dead";
+		constant test_word2 : std_logic_vector(15 downto 0) := x"beef";
 	begin
 		-- after some setup time, set default values
-		wait for 2*period_vme+5 ns; 
-		V_AM <= (others => '0');
-		V_A <= (others => '0');
+		wait for 2 * period_vme + 5 ns;
+		V_AM    <= (others => '0');
+		V_A     <= (others => '0');
 		V_LWORD <= '1';
-		V_AS <= '1';
-		V_DS <= (others => '1');
+		V_AS    <= '1';
+		V_DS    <= (others => '1');
 		V_WRITE <= '1';
-		V_D <= (others => '0');
+		V_D     <= (others => '0');
 		SWITCH1 <= (others => '0');
-		
+
 		-- assert and release address strobe
+		-- this is an address-only cycle
+		report "Testing address-only cycle" severity note;
 		wait for 5 ns;
 		V_AS <= '0';
 		wait for 50 ns;
+		V_AS <= '1';
+		wait for 50 ns;
+		report "Done" severity note;
+
+		-- simulate a read cycle with address pipelining
+		report "Testing read cycle" severity note;
+		-- set correct address
+		V_AM <= b"101101";
+		V_A  <= (others => '0');
+		V_LWORD <= '1';
+		V_WRITE <= '1';
+		wait for 5 ns;
+		-- assert address strobe to tell the address
+		V_AS <= '0';
+		-- assert data strobe to request the data
+		V_DS <= (others => '0');
+		-- wait until data is present
+		wait until V_DTACK = '0';
+		-- check received data and...
+		assert V_D = x"0000" report "Received data is undefined, that's weird" severity error;
+		-- state immediately another address propagation
+		-- very short "wait"s here just for testing
+		V_AS <= '1';
+		wait for 5 ns;
+		V_AM <= (others => '0');
+		V_A <= (others => '0');
+		V_LWORD <= '0';
+		wait for 5 ns;
+		V_AS <= '0';
+		wait for 5 ns;
+		V_AS <= '1';
+		-- acknowledge the data
+		V_DS <= (others => '1');
+		-- play with V_WRITE for testing
+		wait for 5 ns;
+		V_WRITE <= '0';
+		-- and wait for slave to release the data lines
+		wait until V_DTACK = '1';
+		-- wait a bit longer
+		report "Done" severity note;
+		wait for 10 ns;
 		
+		
+		-- simulate a write cycle with address pipelining 1
+		report "Testing write cycle 1" severity note;
+		-- set desired address
+		V_AM <= b"101001";
+		V_A  <= (1 => '1', others => '0');
+		V_LWORD <= '1';
+		V_WRITE <= '0';
+		-- tell the address
+		wait for 5 ns;
+		V_AS <= '0';
+		-- set the data
+		V_D <= test_word1;			
+		wait for 5 ns;
+		V_DS <= (others => '0');
+		-- wait for data ack, immediately change the data for testing
+		wait until V_DTACK = '0';
+		V_D <= x"ffff";
+		V_WRITE <= '1';
+		-- state immediately another address propagation
+		-- very short "wait"s here just for testing
+		V_AS <= '1';
+		wait for 5 ns;
+		V_AM <= (others => '0');
+		V_A <= (others => '0');
+		V_LWORD <= '0';
+		wait for 5 ns;
+		V_AS <= '0';
+		wait for 5 ns;
+		V_AS <= '1';
+		-- acknowledge the data
+		V_DS <= (others => '1');
+		wait until V_DTACK = '1';
+		-- wait a bit longer
+		report "Done" severity note;
+		wait for 10 ns;
+		
+		-- simulate a write cycle with address pipelining 2
+		report "Testing write cycle 2" severity note;
+		-- set desired address
+		V_AM <= b"101001";
+		V_A  <= (2 => '1', others => '0');
+		V_LWORD <= '1';
+		V_WRITE <= '0';
+		-- tell the address
+		wait for 5 ns;
+		V_AS <= '0';
+		-- set the data
+		V_D <= test_word2;			
+		wait for 5 ns;
+		V_DS <= (others => '0');
+		-- wait for data ack, immediately change the data for testing
+		wait until V_DTACK = '0';
+		V_D <= x"ffff";
+		V_WRITE <= '1';
+		-- state immediately another address propagation
+		-- very short "wait"s here just for testing
+		V_AS <= '1';
+		wait for 5 ns;
+		V_AM <= (others => '0');
+		V_A <= (others => '0');
+		V_LWORD <= '0';
+		wait for 5 ns;
+		V_AS <= '0';
+		wait for 5 ns;
+		V_AS <= '1';
+		-- acknowledge the data
+		V_DS <= (others => '1');
+		wait until V_DTACK = '1';
+		-- wait a bit longer
+		report "Done" severity note;
+		wait for 10 ns;
+		
+		-- Reading back the previously written data 2
+		report "Reading back data 2" severity note;
+		-- set correct address
+		V_AM <= b"101101";
+		V_A  <= (2 => '1', others => '0');
+		V_LWORD <= '1';
+		V_WRITE <= '1';
+		wait for 5 ns;
+		-- assert address strobe to tell the address
+		V_AS <= '0';
+		-- assert data strobe to request the data
+		V_DS <= (others => '0');
+		-- wait until data is present
+		wait until V_DTACK = '0';
+		-- check received data and...
+		assert V_D = test_word2 report "Received data 2 is incorrect" severity error;
+		-- acknowledge the data
+		V_DS <= (others => '1');
+		-- and wait for slave to release the data lines
+		wait until V_DTACK = '1';
+		-- wait a bit longer
+		report "Done" severity note;
+		wait for 10 ns;		
+
+			-- Reading back the previously written data 1
+		report "Reading back data 1" severity note;
+		-- set correct address
+		V_AM <= b"101001";
+		V_A  <= (1 => '1', others => '0');
+		V_LWORD <= '1';
+		V_WRITE <= '1';
+		wait for 5 ns;
+		-- assert address strobe to tell the address
+		V_AS <= '0';
+		-- assert data strobe to request the data
+		V_DS <= (others => '0');
+		-- wait until data is present
+		wait until V_DTACK = '0';
+		-- check received data and...
+		assert V_D = test_word1 report "Received data 1 is incorrect" severity error;
+		-- acknowledge the data
+		V_DS <= (others => '1');
+		-- and wait for slave to release the data lines
+		wait until V_DTACK = '1';
+		-- wait a bit longer
+		report "Done" severity note;
+		wait for 10 ns;		
+		
+		wait;
+
 	end process simu;
-	
 
 end architecture arch1;

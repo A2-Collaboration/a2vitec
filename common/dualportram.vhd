@@ -29,7 +29,7 @@ end dualportram;
 architecture rtl of dualportram is
 	-- Shared memory
 	type mem_type is array ((2 ** ADDR) - 1 downto 0) of std_logic_vector(DATA - 1 downto 0);
-	shared variable mem : mem_type;
+	shared variable mem : mem_type := (others => (others => '0'));
 begin
 
 	-- Port A
