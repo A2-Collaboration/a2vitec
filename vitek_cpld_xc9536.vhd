@@ -54,7 +54,7 @@ begin
 	clk <= V_SYSCLK;
 
 	-- I_A(15) not in use currently
-	board_address <= I_A(14 downto 11);
+	board_address <= I_A(15 downto 12);
 
 	fsm : process is
 	begin
