@@ -89,7 +89,7 @@ architecture arch1 of vitek_tb is
 	signal V_AS       : std_logic;
 	signal DTACK      : std_logic;
 	signal I_AM, V_AM : std_logic_vector(5 downto 0);
-	signal I_A, V_A   : std_logic_vector(15 downto 1);
+	signal I_A, V_A   : std_logic_vector(15 downto 1) := (others => '0');
 	signal C_F_in     : std_logic_vector(3 downto 1);
 	signal C_F_out    : std_logic_vector(7 downto 4);
 	signal B_OE       : std_logic;
@@ -197,10 +197,22 @@ begin
 	-- now work on the VME bus as a master
 	simu : process is
 	begin
-		wait for 5 ns;
+		-- after some setup time, set default values
+		wait for 2*period_vme+5 ns; 
 		V_AM <= (others => '0');
 		V_A <= (others => '0');
+		V_LWORD <= '1';
+		V_AS <= '1';
+		V_DS <= (others => '1');
+		V_WRITE <= '1';
 		V_D <= (others => '0');
+		SWITCH1 <= (others => '0');
+		
+		-- assert and release address strobe
+		wait for 5 ns;
+		V_AS <= '0';
+		wait for 50 ns;
+		
 	end process simu;
 	
 

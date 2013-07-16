@@ -8,7 +8,7 @@ entity SN74LVC574APWT is
 	port(
 		clk : in  std_logic;
 		D   : in  std_logic_vector(INPUTS - 1 downto 0);
-		Q   : out std_logic_vector(INPUTS - 1 downto 0)
+		Q   : out std_logic_vector(INPUTS - 1 downto 0) := (others => '0')
 	);
 end entity SN74LVC574APWT;
 
@@ -17,6 +17,6 @@ begin
 	process is
 	begin
 		wait until rising_edge(clk);
-		Q <= D;
+		Q <= D after 10 ns;
 	end process;
 end architecture RTL;

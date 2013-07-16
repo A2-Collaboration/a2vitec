@@ -15,16 +15,18 @@ end entity SN74LVTH162245DL;
 
 architecture RTL of SN74LVTH162245DL is
 begin
-	process(OE, DIR) is
+  -- add A,B to sensitivity list, 
+  -- otherwise simulation fails
+	process(OE, DIR, A, B) is
 	begin
 		if OE = '1' then
 			A <= (others => 'Z');
 			B <= (others => 'Z');
-		else
+		elsif OE = '0' then
 			if DIR = '0' then
 				A <= B;
 				B <= (others => 'Z');
-			else
+			elsif DIR = '1' then
 				B <= A;
 				A <= (others => 'Z');
 			end if;

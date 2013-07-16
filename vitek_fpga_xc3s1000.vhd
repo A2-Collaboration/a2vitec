@@ -66,7 +66,7 @@ architecture arch1 of vitek_fpga_xc3s1000 is
 	signal vme_state                 : vme_state_type := s_vme_idle;
 	signal vme_wr                    : std_logic;
 	constant vme_addr_size           : integer        := 3; -- 2^3=8 vme registers maximum (currently)
-	signal vme_addr                  : std_logic_vector(vme_addr_size - 1 downto 0);
+	signal vme_addr                  : std_logic_vector(vme_addr_size - 1 downto 0) := (others => '0');
 	signal vme_din, vme_dout         : std_logic_vector(31 downto 0);
 	signal fpga_start, fpga_finished : std_logic;
 	signal V_WRITE                   : std_logic;
