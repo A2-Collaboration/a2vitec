@@ -122,7 +122,7 @@ begin
 	end process clock_driver_vme;
 
 	-- instantiate CPLD
-	V_DTACK <= not DTACK; -- there's a not in the schematics!
+	V_DTACK <= not DTACK;               -- there's a not in the schematics!
 	CPLD_1 : vitek_cpld_xc9536
 		port map(A_CLK     => A_CLK,
 			       V_SYSCLK  => V_SYSCLK,
@@ -223,11 +223,12 @@ begin
 		-- simulate a read cycle with address pipelining
 		report "Testing read cycle" severity note;
 		-- set correct address
-		V_AM <= b"101101";
-		V_A  <= (others => '0');
+		V_AM    <= b"101101";
+		V_A     <= (others => '0');
 		V_LWORD <= '1';
 		V_WRITE <= '1';
-		wait for 5 ns;
+		V_D <= (others => 'Z');
+		wait for 30 ns;
 		-- assert address strobe to tell the address
 		V_AS <= '0';
 		-- assert data strobe to request the data
@@ -240,8 +241,8 @@ begin
 		-- very short "wait"s here just for testing
 		V_AS <= '1';
 		wait for 5 ns;
-		V_AM <= (others => '0');
-		V_A <= (others => '0');
+		V_AM    <= (others => '0');
+		V_A     <= (others => '0');
 		V_LWORD <= '0';
 		wait for 5 ns;
 		V_AS <= '0';
@@ -257,32 +258,31 @@ begin
 		-- wait a bit longer
 		report "Done" severity note;
 		wait for 10 ns;
-		
-		
+
 		-- simulate a write cycle with address pipelining 1
 		report "Testing write cycle 1" severity note;
 		-- set desired address
-		V_AM <= b"101001";
-		V_A  <= (1 => '1', others => '0');
+		V_AM    <= b"101001";
+		V_A     <= (1 => '1', others => '0');
 		V_LWORD <= '1';
 		V_WRITE <= '0';
 		-- tell the address
-		wait for 5 ns;
+		wait for 30 ns;
 		V_AS <= '0';
 		-- set the data
-		V_D <= test_word1;			
-		wait for 5 ns;
+		V_D  <= test_word1;
+		wait for 30 ns;
 		V_DS <= (others => '0');
 		-- wait for data ack, immediately change the data for testing
 		wait until V_DTACK = '0';
-		V_D <= x"ffff";
+		V_D     <= x"ffff";
 		V_WRITE <= '1';
 		-- state immediately another address propagation
 		-- very short "wait"s here just for testing
-		V_AS <= '1';
+		V_AS    <= '1';
 		wait for 5 ns;
-		V_AM <= (others => '0');
-		V_A <= (others => '0');
+		V_AM    <= (others => '0');
+		V_A     <= (others => '0');
 		V_LWORD <= '0';
 		wait for 5 ns;
 		V_AS <= '0';
@@ -294,31 +294,31 @@ begin
 		-- wait a bit longer
 		report "Done" severity note;
 		wait for 10 ns;
-		
+
 		-- simulate a write cycle with address pipelining 2
 		report "Testing write cycle 2" severity note;
 		-- set desired address
-		V_AM <= b"101001";
-		V_A  <= (2 => '1', others => '0');
+		V_AM    <= b"101001";
+		V_A     <= (2 => '1', others => '0');
 		V_LWORD <= '1';
 		V_WRITE <= '0';
 		-- tell the address
-		wait for 5 ns;
+		wait for 30 ns;
 		V_AS <= '0';
 		-- set the data
-		V_D <= test_word2;			
-		wait for 5 ns;
+		V_D  <= test_word2;
+		wait for 30 ns;
 		V_DS <= (others => '0');
 		-- wait for data ack, immediately change the data for testing
 		wait until V_DTACK = '0';
-		V_D <= x"ffff";
+		V_D     <= x"ffff";
 		V_WRITE <= '1';
 		-- state immediately another address propagation
 		-- very short "wait"s here just for testing
-		V_AS <= '1';
+		V_AS    <= '1';
 		wait for 5 ns;
-		V_AM <= (others => '0');
-		V_A <= (others => '0');
+		V_AM    <= (others => '0');
+		V_A     <= (others => '0');
 		V_LWORD <= '0';
 		wait for 5 ns;
 		V_AS <= '0';
@@ -330,15 +330,16 @@ begin
 		-- wait a bit longer
 		report "Done" severity note;
 		wait for 10 ns;
-		
+
 		-- Reading back the previously written data 2
 		report "Reading back data 2" severity note;
 		-- set correct address
-		V_AM <= b"101101";
-		V_A  <= (2 => '1', others => '0');
+		V_AM    <= b"101101";
+		V_A     <= (2 => '1', others => '0');
 		V_LWORD <= '1';
 		V_WRITE <= '1';
-		wait for 5 ns;
+		V_D <= (others => 'Z');
+		wait for 30 ns;
 		-- assert address strobe to tell the address
 		V_AS <= '0';
 		-- assert data strobe to request the data
@@ -353,16 +354,17 @@ begin
 		wait until V_DTACK = '1';
 		-- wait a bit longer
 		report "Done" severity note;
-		wait for 10 ns;		
+		wait for 10 ns;
 
-			-- Reading back the previously written data 1
+		-- Reading back the previously written data 1
 		report "Reading back data 1" severity note;
 		-- set correct address
-		V_AM <= b"101001";
-		V_A  <= (1 => '1', others => '0');
+		V_AM    <= b"101001";
+		V_A     <= (1 => '1', others => '0');
 		V_LWORD <= '1';
 		V_WRITE <= '1';
-		wait for 5 ns;
+		V_D <= (others => 'Z');
+		wait for 30 ns;
 		-- assert address strobe to tell the address
 		V_AS <= '0';
 		-- assert data strobe to request the data
@@ -377,8 +379,10 @@ begin
 		wait until V_DTACK = '1';
 		-- wait a bit longer
 		report "Done" severity note;
-		wait for 10 ns;		
-		
+		wait for 10 ns;
+
+		report "REALLY DONE" severity note;
+
 		wait;
 
 	end process simu;
