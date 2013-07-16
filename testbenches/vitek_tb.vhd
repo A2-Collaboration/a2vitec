@@ -211,6 +211,7 @@ begin
 		V_D     <= (others => '0');
 		SWITCH1 <= (others => '0');
 
+		--------------------------------------
 		-- assert and release address strobe
 		-- this is an address-only cycle
 		t0 := now;
@@ -222,7 +223,8 @@ begin
 		wait for 50 ns;
 		t1 := now - t0;
 		report "Done, took " & time'image(t1) severity note;
-
+		wait for 500 ns;
+		
 		--------------------------------------
 		-- simulate a read cycle with address pipelining
 		t0 := now;
@@ -263,7 +265,7 @@ begin
 		-- wait a bit longer
 		t1 := now - t0;
 		report "Done, took " & time'image(t1) severity note;
-		wait for 10 ns;
+		wait for 500 ns;
 
 		----------------------------------------
 		-- simulate a write cycle with address pipelining 1
@@ -302,7 +304,7 @@ begin
 		-- wait a bit longer
 		t1 := now - t0;
 		report "Done, took " & time'image(t1) severity note;
-		wait for 10 ns;
+		wait for 500 ns;
 
 		-------------------------------------
 		-- simulate a write cycle with address pipelining 2
@@ -341,7 +343,32 @@ begin
 		-- wait a bit longer
 		t1 := now - t0;
 		report "Done, took " & time'image(t1) severity note;
-		wait for 10 ns;
+		wait for 500 ns;
+
+		-----------------------------
+		-- test with wrong address
+		t0 := now;
+		report "Testing with wrong board address" severity note;
+		-- set correct address
+		V_AM    <= b"101101";
+		V_A     <= (15 => '1', 2 => '1', others => '0');
+		V_LWORD <= '1';
+		V_WRITE <= '1';
+		V_D     <= (others => 'Z');
+		wait for 5 ns;
+		V_AS <= '0';
+		V_DS <= (others => '0');
+		-- DTACK should stay high here
+		for i in 1 to 30 loop
+			assert V_DTACK = '1' report "DTACK went low!" severity error;
+			wait for 5 ns;
+		end loop;
+		V_AS <= '1';
+		V_DS <= (others => '1');
+		-- wait a bit longer
+		t1 := now - t0;
+		report "Done, took " & time'image(t1) severity note;
+		wait for 500 ns;
 
 		------------------------------------------
 		-- Reading back the previously written data 2
@@ -371,7 +398,7 @@ begin
 		-- wait a bit longer
 		t1 := now - t0;
 		report "Done, took " & time'image(t1) severity note;
-		wait for 10 ns;
+		wait for 500 ns;
 
 		-------------------------------------------
 		-- Reading back the previously written data 1
@@ -401,7 +428,7 @@ begin
 		-- wait a bit longer
 		t1 := now - t0;
 		report "Done, took " & time'image(t1) severity note;
-		wait for 10 ns;
+		wait for 500 ns;
 
 		--------------------------------------
 		-- write something else on the bus
