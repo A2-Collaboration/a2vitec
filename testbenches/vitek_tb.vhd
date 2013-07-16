@@ -198,6 +198,7 @@ begin
 	simu : process is
 		constant test_word1 : std_logic_vector(15 downto 0) := x"dead";
 		constant test_word2 : std_logic_vector(15 downto 0) := x"beef";
+		variable t0, t1     : time;
 	begin
 		-- after some setup time, set default values
 		wait for 2 * period_vme + 5 ns;
@@ -212,22 +213,26 @@ begin
 
 		-- assert and release address strobe
 		-- this is an address-only cycle
+		t0 := now;
 		report "Testing address-only cycle" severity note;
 		wait for 5 ns;
 		V_AS <= '0';
 		wait for 50 ns;
 		V_AS <= '1';
 		wait for 50 ns;
-		report "Done" severity note;
+		t1 := now - t0;
+		report "Done, took " & time'image(t1) severity note;
 
+		--------------------------------------
 		-- simulate a read cycle with address pipelining
+		t0 := now;
 		report "Testing read cycle" severity note;
 		-- set correct address
 		V_AM    <= b"101101";
 		V_A     <= (others => '0');
 		V_LWORD <= '1';
 		V_WRITE <= '1';
-		V_D <= (others => 'Z');
+		V_D     <= (others => 'Z');
 		wait for 30 ns;
 		-- assert address strobe to tell the address
 		V_AS <= '0';
@@ -256,10 +261,13 @@ begin
 		-- and wait for slave to release the data lines
 		wait until V_DTACK = '1';
 		-- wait a bit longer
-		report "Done" severity note;
+		t1 := now - t0;
+		report "Done, took " & time'image(t1) severity note;
 		wait for 10 ns;
 
+		----------------------------------------
 		-- simulate a write cycle with address pipelining 1
+		t0 := now;
 		report "Testing write cycle 1" severity note;
 		-- set desired address
 		V_AM    <= b"101001";
@@ -292,10 +300,13 @@ begin
 		V_DS <= (others => '1');
 		wait until V_DTACK = '1';
 		-- wait a bit longer
-		report "Done" severity note;
+		t1 := now - t0;
+		report "Done, took " & time'image(t1) severity note;
 		wait for 10 ns;
 
+		-------------------------------------
 		-- simulate a write cycle with address pipelining 2
+		t0 := now;
 		report "Testing write cycle 2" severity note;
 		-- set desired address
 		V_AM    <= b"101001";
@@ -328,17 +339,20 @@ begin
 		V_DS <= (others => '1');
 		wait until V_DTACK = '1';
 		-- wait a bit longer
-		report "Done" severity note;
+		t1 := now - t0;
+		report "Done, took " & time'image(t1) severity note;
 		wait for 10 ns;
 
+		------------------------------------------
 		-- Reading back the previously written data 2
+		t0 := now;
 		report "Reading back data 2" severity note;
 		-- set correct address
 		V_AM    <= b"101101";
 		V_A     <= (2 => '1', others => '0');
 		V_LWORD <= '1';
 		V_WRITE <= '1';
-		V_D <= (others => 'Z');
+		V_D     <= (others => 'Z');
 		wait for 30 ns;
 		-- assert address strobe to tell the address
 		V_AS <= '0';
@@ -346,6 +360,8 @@ begin
 		V_DS <= (others => '0');
 		-- wait until data is present
 		wait until V_DTACK = '0';
+		-- immediately negate address strobe
+		V_AS <= '1';
 		-- check received data and...
 		assert V_D = test_word2 report "Received data 2 is incorrect" severity error;
 		-- acknowledge the data
@@ -353,17 +369,20 @@ begin
 		-- and wait for slave to release the data lines
 		wait until V_DTACK = '1';
 		-- wait a bit longer
-		report "Done" severity note;
+		t1 := now - t0;
+		report "Done, took " & time'image(t1) severity note;
 		wait for 10 ns;
 
+		-------------------------------------------
 		-- Reading back the previously written data 1
+		t0 := now;
 		report "Reading back data 1" severity note;
-		-- set correct address
+		-- set correct addressV_AS <= '1';
 		V_AM    <= b"101001";
 		V_A     <= (1 => '1', others => '0');
 		V_LWORD <= '1';
 		V_WRITE <= '1';
-		V_D <= (others => 'Z');
+		V_D     <= (others => 'Z');
 		wait for 30 ns;
 		-- assert address strobe to tell the address
 		V_AS <= '0';
@@ -371,6 +390,8 @@ begin
 		V_DS <= (others => '0');
 		-- wait until data is present
 		wait until V_DTACK = '0';
+		-- immediately negate address strobe
+		V_AS <= '1';
 		-- check received data and...
 		assert V_D = test_word1 report "Received data 1 is incorrect" severity error;
 		-- acknowledge the data
@@ -378,11 +399,15 @@ begin
 		-- and wait for slave to release the data lines
 		wait until V_DTACK = '1';
 		-- wait a bit longer
-		report "Done" severity note;
+		t1 := now - t0;
+		report "Done, took " & time'image(t1) severity note;
 		wait for 10 ns;
 
+		--------------------------------------
+		-- write something else on the bus
+		V_WRITE <= '0';
+		V_D     <= x"ffff";
 		report "REALLY DONE" severity note;
-
 		wait;
 
 	end process simu;
