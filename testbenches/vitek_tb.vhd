@@ -53,41 +53,56 @@ architecture arch1 of vitek_tb is
 			   D_MS             : out   std_logic;
 			   D_LE             : out   std_logic;
 			   D_CLK            : out   std_logic;
-			   F_D              : inout std_logic_vector(31 downto 0);
+			   F_D              : inout std_logic_vector(15 downto 0);
 			   C_F_in           : out   std_logic_vector(3 downto 1);
 			   C_F_out          : in    std_logic_vector(7 downto 4);
 
 			   I_A              : in    std_logic_vector(10 downto 1));
 	end component vitek_fpga_xc3s1000;
 
-	constant period : time := 1000 / 60 ns; -- 60MHz clock (from UTMI)
+	component SN74LVTH162245DL
+		generic(INPUTS : integer);
+		port(OE  : in    std_logic;
+			   DIR : in    std_logic;
+			   A   : inout std_logic_vector(INPUTS - 1 downto 0);
+			   B   : inout std_logic_vector(INPUTS - 1 downto 0));
+	end component SN74LVTH162245DL;
+
+	component SN74LVC574APWT
+		generic(INPUTS : integer);
+		port(clk : in  std_logic;
+			   D   : in  std_logic_vector(INPUTS - 1 downto 0);
+			   Q   : out std_logic_vector(INPUTS - 1 downto 0));
+	end component SN74LVC574APWT;
+
+	constant period : time := 16.67 ns; -- 60MHz clock (from UTMI)
 	signal clk      : std_logic;
 
-	constant period_vme : time := 1000 / 16 ns; -- 16MHz clock (from VMEbus)
-	signal clk_vme      : std_logic;
+	constant period_vme : time := 62.5 ns; -- 16MHz clock (from VMEbus)
+	signal V_SYSCLK     : std_logic;
 
 	-- CPLD signals
-	signal A_CLK     : std_logic;
-	signal V_DS      : std_logic_vector(1 downto 0);
-	signal V_WRITE   : std_logic;
-	signal V_LWORD   : std_logic;
-	signal V_AS      : std_logic;
-	signal DTACK     : std_logic;
-	signal I_AM      : std_logic_vector(5 downto 0);
-	signal I_A       : std_logic_vector(15 downto 1);
-	signal C_F_in    : std_logic_vector(3 downto 1);
-	signal C_F_out   : std_logic_vector(7 downto 4);
-	signal B_OE      : std_logic;
-	signal B_DIR     : std_logic;
-	signal PORT_READ : std_logic;
-	signal PORT_CLK  : std_logic;
-	signal SWITCH1   : std_logic_vector(3 downto 0);
+	signal A_CLK      : std_logic;
+	signal V_DS       : std_logic_vector(1 downto 0);
+	signal V_WRITE    : std_logic;
+	signal V_LWORD    : std_logic;
+	signal V_AS       : std_logic;
+	signal DTACK      : std_logic;
+	signal I_AM, V_AM : std_logic_vector(5 downto 0);
+	signal I_A, V_A   : std_logic_vector(15 downto 1);
+	signal C_F_in     : std_logic_vector(3 downto 1);
+	signal C_F_out    : std_logic_vector(7 downto 4);
+	signal B_OE       : std_logic;
+	signal B_DIR      : std_logic;
+	signal PORT_READ  : std_logic;
+	signal PORT_CLK   : std_logic;
+	signal SWITCH1    : std_logic_vector(3 downto 0);
 
 	-- FPGA signals
-	signal F_D   : std_logic_vector(31 downto 0);
-	signal I_NIM : std_logic_vector(4 downto 0);
-	signal EI    : std_logic_vector(16 downto 1);
-	signal D_IN  : std_logic_vector(5 downto 1);
+	signal F_D, V_D : std_logic_vector(15 downto 0);
+	signal I_NIM    : std_logic_vector(4 downto 0);
+	signal EI       : std_logic_vector(16 downto 1);
+	signal D_OUT    : std_logic_vector(5 downto 1);
 
 begin
 	clock_driver : process
@@ -100,16 +115,16 @@ begin
 
 	clock_driver_vme : process
 	begin
-		clk_vme <= '0';
+		V_SYSCLK <= '0';
 		wait for period_vme / 2;
-		clk_vme <= '1';
+		V_SYSCLK <= '1';
 		wait for period_vme / 2;
 	end process clock_driver_vme;
 
 	-- instantiate CPLD
 	CPLD_1 : vitek_cpld_xc9536
 		port map(A_CLK     => A_CLK,
-			       V_SYSCLK  => clk_vme,
+			       V_SYSCLK  => V_SYSCLK,
 			       V_DS      => V_DS,
 			       V_WRITE   => V_WRITE,
 			       V_LWORD   => V_LWORD,
@@ -128,7 +143,7 @@ begin
 	-- instantiate FPGA, neglect the unneeded I/O (delay, NIM, ECL)
 	I_NIM <= (others => '0');
 	EI    <= (others => '0');
-	D_IN  <= (others => '0');
+	D_OUT <= (others => '0');
 	FPGA_1 : vitek_fpga_xc3s1000
 		port map(CLK              => CLK,
 			       UTMI_databus16_8 => open,
@@ -147,8 +162,8 @@ begin
 			       OHO_SCLK         => open,
 			       OHO_SER          => open,
 			       V_V              => open,
-			       D_IN             => D_IN,
-			       D_OUT            => open,
+			       D_IN             => open,
+			       D_OUT            => D_OUT,
 			       D_D              => open,
 			       D_Q              => open,
 			       D_MS             => open,
@@ -159,7 +174,34 @@ begin
 			       C_F_out          => C_F_out,
 			       I_A              => I_A(10 downto 1));
 
--- now work on the VME bus as a master
+	-- instantiate some more ICs (to make tests more realistic)
+	VME_transceiver_1 : component SN74LVTH162245DL
+		generic map(INPUTS => 16)
+		port map(OE  => B_OE,
+			       DIR => B_DIR,
+			       A   => F_D,
+			       B   => V_D);
 
+	VME_A_1 : component SN74LVC574APWT
+		generic map(INPUTS => 15)
+		port map(clk => A_CLK,
+			       D   => V_A,
+			       Q   => I_A);
+	VME_AM_1 : component SN74LVC574APWT
+		generic map(INPUTS => 6)
+		port map(clk => A_CLK,
+			       D   => V_AM,
+			       Q   => I_AM);
+	
+	
+	-- now work on the VME bus as a master
+	simu : process is
+	begin
+		wait for 5 ns;
+		V_AM <= (others => '0');
+		V_A <= (others => '0');
+		V_D <= (others => '0');
+	end process simu;
+	
 
 end architecture arch1;
