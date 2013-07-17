@@ -99,10 +99,10 @@ architecture arch1 of vitek_tb is
 	signal SWITCH1        : std_logic_vector(3 downto 0);
 
 	-- FPGA signals
-	signal F_D, V_D : std_logic_vector(15 downto 0);
-	signal I_NIM    : std_logic_vector(4 downto 1);
-	signal EI       : std_logic_vector(16 downto 1);
-	signal D_OUT    : std_logic_vector(5 downto 1);
+	signal F_D, V_D     : std_logic_vector(15 downto 0);
+	signal I_NIM, O_NIM : std_logic_vector(4 downto 1);
+	signal EI, EO       : std_logic_vector(16 downto 1);
+	signal D_OUT        : std_logic_vector(5 downto 1);
 
 begin
 	clock_driver : process
@@ -142,8 +142,6 @@ begin
 			       SWITCH1   => SWITCH1);
 
 	-- instantiate FPGA, neglect the unneeded I/O (delay, NIM, ECL)
-	I_NIM <= (others => '0');
-	EI    <= (others => '0');
 	D_OUT <= (others => '0');
 	FPGA_1 : vitek_fpga_xc3s1000
 		port map(CLK              => CLK,
@@ -154,9 +152,9 @@ begin
 			       UTMI_opmode1     => open,
 			       UTMI_txvalid     => open,
 			       LED_module       => open,
-			       O_NIM            => open,
+			       O_NIM            => O_NIM,
 			       I_NIM            => I_NIM,
-			       EO               => open,
+			       EO               => EO,
 			       EI               => EI,
 			       A_X              => open,
 			       OHO_RCLK         => open,
@@ -196,9 +194,13 @@ begin
 
 	-- now work on the VME bus as a master
 	simu : process is
-		constant test_word1 : std_logic_vector(15 downto 0) := x"dead";
-		constant test_word2 : std_logic_vector(15 downto 0) := x"beef";
-		variable t0, t1     : time;
+		constant test_word1   : std_logic_vector(15 downto 0) := x"dead";
+		constant test_word2   : std_logic_vector(15 downto 0) := x"beef";
+		constant test_ecl_in  : std_logic_vector(15 downto 0) := x"abcd";
+		constant test_ecl_out : std_logic_vector(15 downto 0) := x"dcba";
+		constant test_nim_in  : std_logic_vector(3 downto 0)  := x"a";
+		constant test_nim_out : std_logic_vector(3 downto 0)  := x"b";
+		variable t0, t1       : time;
 	begin
 		-- after some setup time, set default values
 		wait for 2 * period_vme + 5 ns;
@@ -210,6 +212,8 @@ begin
 		V_WRITE <= '1';
 		V_D     <= (others => '0');
 		SWITCH1 <= (others => '0');
+		I_NIM   <= (others => '0');
+		EI      <= (others => '0');
 
 		--------------------------------------
 		-- assert and release address strobe
@@ -224,7 +228,7 @@ begin
 		t1 := now - t0;
 		report "Done, took " & time'image(t1) severity note;
 		wait for 500 ns;
-		
+
 		--------------------------------------
 		-- simulate a read cycle with address pipelining
 		t0 := now;
@@ -366,7 +370,7 @@ begin
 		V_AS <= '1';
 		V_DS <= (others => '1');
 		-- wait a bit longer
-		t1 := now - t0;
+		t1   := now - t0;
 		report "Done, took " & time'image(t1) severity note;
 		wait for 500 ns;
 
@@ -406,7 +410,7 @@ begin
 		report "Reading back data 1" severity note;
 		-- set correct addressV_AS <= '1';
 		V_AM    <= b"101001";
-		V_A     <= (3 => '1', 1 => '0',  others => '0');
+		V_A     <= (3 => '1', 1 => '0', others => '0');
 		V_LWORD <= '1';
 		V_WRITE <= '1';
 		V_D     <= (others => 'Z');
@@ -425,6 +429,133 @@ begin
 		V_DS <= (others => '1');
 		-- and wait for slave to release the data lines
 		wait until V_DTACK = '1';
+		-- wait a bit longer
+		t1 := now - t0;
+		report "Done, took " & time'image(t1) severity note;
+		wait for 500 ns;
+
+		--------------------------------------
+		-- Test the ECL in (address 00)
+		t0 := now;
+		report "Testing ECL in" severity note;
+		-- set the input
+		EI <= test_ecl_in;
+		wait for 50 ns;
+		-- read it over VME (input is in lower bytes)
+		V_AM    <= b"101001";
+		V_A     <= (2 => '0', 1 => '0', others => '0');
+		V_LWORD <= '1';
+		V_WRITE <= '1';
+		V_D     <= (others => 'Z');
+		wait for 30 ns;
+		-- assert address strobe to tell the address
+		V_AS <= '0';
+		-- assert data strobe to request the data
+		V_DS <= (others => '0');
+		-- wait until data is present
+		wait until V_DTACK = '0';
+		-- immediately negate address strobe
+		V_AS <= '1';
+		-- check received data
+		-- BUT NOTE THAT VME has big endian, so swap the two bytes
+		assert V_D(15 downto 8) = test_ecl_in(7 downto 0) and V_D(7 downto 0) = test_ecl_in(15 downto 8) report "Received ECL data is incorrect" severity error;
+		-- acknowledge the data
+		V_DS <= (others => '1');
+		-- and wait for slave to release the data lines
+		wait until V_DTACK = '1';
+		-- wait a bit longer
+		EI <= (others => '0');
+		t1 := now - t0;
+		report "Done, took " & time'image(t1) severity note;
+		wait for 500 ns;
+
+		--------------------------------------
+		-- Test the ECL out (address 01)
+		t0 := now;
+		report "Testing ECL out" severity note;
+		-- set desired address (output is in upper bytes)
+		V_AM    <= b"101001";
+		V_A     <= (2 => '0', 1 => '1', others => '0');
+		V_LWORD <= '1';
+		V_WRITE <= '0';
+		-- tell the address
+		wait for 30 ns;
+		V_AS <= '0';
+		-- set the data, but swap the bytes (big endian again)
+		V_D  <= test_ecl_out(7 downto 0) & test_ecl_out(15 downto 8);
+		wait for 30 ns;
+		V_DS <= (others => '0');
+		-- wait for data ack
+		wait until V_DTACK = '0';
+		-- acknowledge the transfer
+		V_AS <= '1';
+		V_DS <= (others => '1');
+		wait until V_DTACK = '1';
+		-- see if it's at the output
+		assert EO = test_ecl_out report "Set ECL output is incorrect" severity error;
+		-- wait a bit longer
+		t1 := now - t0;
+		report "Done, took " & time'image(t1) severity note;
+		wait for 500 ns;
+
+		--------------------------------------
+		-- Test the NIM in (address 10)
+		t0 := now;
+		report "Testing NIM in" severity note;
+		-- set the input
+		I_NIM <= test_nim_in;
+		wait for 50 ns;
+		-- read it over VME (input is in lower bytes)
+		V_AM    <= b"101001";
+		V_A     <= (2 => '1', 1 => '0', others => '0');
+		V_LWORD <= '1';
+		V_WRITE <= '1';
+		V_D     <= (others => 'Z');
+		wait for 30 ns;
+		-- assert address strobe to tell the address
+		V_AS <= '0';
+		-- assert data strobe to request the data
+		V_DS <= (others => '0');
+		-- wait until data is present
+		wait until V_DTACK = '0';
+		-- immediately negate address strobe
+		V_AS <= '1';
+		-- check received data
+		assert V_D(11 downto 8) = test_nim_in report "Received NIM data is incorrect" severity error;
+		-- acknowledge the data
+		V_DS <= (others => '1');
+		-- and wait for slave to release the data lines
+		wait until V_DTACK = '1';
+		-- wait a bit longer
+		EI <= (others => '0');
+		t1 := now - t0;
+		report "Done, took " & time'image(t1) severity note;
+		wait for 500 ns;
+
+		--------------------------------------
+		-- Test the NIM out (address 11)
+		t0 := now;
+		report "Testing NIM out" severity note;
+		-- set desired address (output is in upper bytes)
+		V_AM    <= b"101001";
+		V_A     <= (2 => '1', 1 => '1', others => '0');
+		V_LWORD <= '1';
+		V_WRITE <= '0';
+		-- tell the address
+		wait for 30 ns;
+		V_AS <= '0';
+		-- set the data, remember where the lowest byte is
+		V_D  <= x"0" & test_nim_out & x"00";
+		wait for 30 ns;
+		V_DS <= (others => '0');
+		-- wait for data ack
+		wait until V_DTACK = '0';
+		-- acknowledge the transfer
+		V_AS <= '1';
+		V_DS <= (others => '1');
+		wait until V_DTACK = '1';
+		-- see if it's at the output
+		assert O_NIM = test_nim_out report "Set NIM output is incorrect" severity error;
 		-- wait a bit longer
 		t1 := now - t0;
 		report "Done, took " & time'image(t1) severity note;

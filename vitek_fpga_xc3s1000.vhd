@@ -1,5 +1,6 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
+use ieee.numeric_std.all;
 
 entity vitek_fpga_xc3s1000 is
 	port(
@@ -63,21 +64,19 @@ architecture arch1 of vitek_fpga_xc3s1000 is
 	-- VME stuff: Write to/Read from dualportram (=memory), 
 	-- handle CPLD (which does the VME communication)
 	type vme_state_type is (s_vme_idle, s_vme_write, s_vme_read, s_vme_finish);
-	signal vme_state                 : vme_state_type                               := s_vme_idle;
+	signal vme_state                 : vme_state_type                           := s_vme_idle;
 	signal vme_wr                    : std_logic;
-	constant vme_addr_size           : integer                                      := 2; -- 2^2=4 vme registers maximum (currently)
-	signal vme_addr                  : std_logic_vector(vme_addr_size - 1 downto 0) := (others => '0');
-	signal vme_din, vme_dout         : std_logic_vector(31 downto 0);
+	constant vme_addr_size           : integer                                  := 3; -- 2^3=8 vme registers maximum (currently)
+	signal vme_addr                  : std_logic_vector(vme_addr_size downto 1) := (others => '0');
+	signal vme_din, vme_dout         : std_logic_vector(15 downto 0);
 	signal fpga_start, fpga_finished : std_logic;
 	signal V_WRITE                   : std_logic;
 
 	-- NIM/ECL input/output
-	type nimecl_state_type is (s_nimecl_ecl_addr, s_nimecl_ecl_write, s_nimecl_nim_addr, s_nimecl_nim_write);
-	signal nimecl_state            : nimecl_state_type                            := s_nimecl_ecl_addr;
 	signal nimecl_wr               : std_logic;
-	signal nimecl_addr             : std_logic_vector(vme_addr_size - 1 downto 0) := (others => '0');
-	signal nimecl_din, nimecl_dout : std_logic_vector(31 downto 0);
-
+	signal nimecl_addr             : std_logic_vector(vme_addr_size downto 1) := (others => '0');
+	signal nimecl_state            : unsigned(1 downto 0)                     := (others => '0');
+	signal nimecl_din, nimecl_dout : std_logic_vector(15 downto 0);
 begin
 
 	-- Configure USB chip on micromodule (UTMI USB3250), 
@@ -118,7 +117,7 @@ begin
 		-- synchronize inputs
 		V_WRITE    <= C_F_out(5);
 		fpga_start <= C_F_out(6);
-		vme_addr   <= I_A(vme_addr_size + 1 downto 2);
+		vme_addr   <= I_A(vme_addr_size downto 1);
 
 		case vme_state is
 			when s_vme_idle =>
@@ -136,30 +135,17 @@ begin
 
 			when s_vme_write =>
 				-- the address is already set above, 
-				-- so multiplex the bytes into the 32bit wide memory
-				if I_A(1) = '0' then
-					-- lower two bytes swapped, keep upper two
-					vme_din <= vme_dout(31 downto 16) & F_D(7 downto 0) & F_D(15 downto 8);
-				else
-					-- higher two bytes swapped, keep lower two
-					vme_din <= F_D(7 downto 0) & F_D(15 downto 8) & vme_dout(15 downto 0);
-				end if;
+				-- so multiplex the bytes into the 16bit wide memory
+				vme_din   <= F_D(7 downto 0) & F_D(15 downto 8);
 				vme_wr    <= '1';
 				vme_state <= s_vme_finish;
 
 			when s_vme_read =>
 				-- the address is already set above, 
-				-- so multiplex the 32bit wide memory to the bytes
-				if I_A(1) = '0' then
-					-- lower two bytes swapped
-					F_D(7 downto 0)  <= vme_dout(15 downto 8);
-					F_D(15 downto 8) <= vme_dout(7 downto 0);
-				else
-					-- higher two bytes swapped
-					F_D(7 downto 0)  <= vme_dout(31 downto 24);
-					F_D(15 downto 8) <= vme_dout(23 downto 16);
-				end if;
-				vme_state <= s_vme_finish;
+				-- so multiplex the 16bit wide memory to the bytes
+				F_D(7 downto 0)  <= vme_dout(15 downto 8);
+				F_D(15 downto 8) <= vme_dout(7 downto 0);
+				vme_state        <= s_vme_finish;
 
 			when s_vme_finish =>
 				-- tell CPLD we're ready and 
@@ -173,10 +159,10 @@ begin
 		end case;
 	end process vme;
 
-	-- port b can be used to handle the VME data transparently
+	-- port b can be used to handle the VME data transparently (see below!)
 	vme_data : component dualportram
-		generic map(DATA => 32,         -- 32 bit wide 
-			          ADDR => vme_addr_size -- 2^3=8 words
+		generic map(DATA => 16,         -- 16 bit wide 
+			          ADDR => vme_addr_size -- 
 		)
 		port map(a_clk  => clk,
 			       a_wr   => vme_wr,
@@ -190,39 +176,52 @@ begin
 			       b_dout => nimecl_dout);
 
 	-- we simply map the ECL and NIM outputs and inputs into the ram
+	-- we did not combine the NIM outputs since this complicates ensuring 
+	-- the "atomic" VME read/writes
 	-- this is not the most flexible approach, but it's good start
 	-- if there are some scalers to be implemented,
-	-- they should have there own VME access
+	-- they should have there own VME access (I guess)
+
+	nimecl_addr <= '0' & std_logic_vector(nimecl_state);
+
 	nimecl_io_1 : process is
 	begin
 		wait until rising_edge(clk);
+		-- we always cycle through the addresses
+		-- that results in an update cycle of 4*clockcycle = 80ns,
+		-- which is much faster than the VMEbus reads/writes
+		nimecl_state <= nimecl_state + 1;
 
-		-- and toggle between ecl and nim, 
-		-- this effectively results in an update cycle of 4*clockcycle =~ 120 ns (length of the FSM)
-		-- since VME bus is a factor 5 (at least) slower, that doesn't really matter now
+		-- precise timing is needed here, and don't get confused who is writing what from where :)
+		-- reading from memory needs waiting one cycle after setting the address, thus previous address is relevant
+		-- writing to memory needs setting the data ahead, thus next address is relevant
+		
 		case nimecl_state is
-			when s_nimecl_ecl_addr =>
-				nimecl_wr    <= '0';
-				nimecl_addr  <= (0 => '0', others => '0');
-				nimecl_state <= s_nimecl_ecl_write;
+			when b"00" =>
+				-- previous address is b"11", next address is b"01"
+				-- output NIM from memory
+				O_NIM     <= nimecl_dout(3 downto 0);
+				nimecl_wr <= '0';
 
-			when s_nimecl_ecl_write =>
-				nimecl_wr    <= '1';
-				nimecl_din   <= nimecl_dout(31 downto 16) & EI;
-				EO           <= nimecl_dout(31 downto 16);
-				nimecl_state <= s_nimecl_nim_addr;
+			when b"01" =>
+				-- previous address is b"00", next address is b"10"
+				-- read NIM input into memory
+				nimecl_wr  <= '1';
+				nimecl_din <= x"000" & I_NIM;
 
-			when s_nimecl_nim_addr =>
-				nimecl_wr    <= '0';
-				nimecl_addr  <= (0 => '1', others => '0');
-				nimecl_state <= s_nimecl_nim_write;
+			when b"10" =>
+				-- previous address is b"01", next address is b"11"  
+				-- output ECL from memory
+				EO        <= nimecl_dout;
+				nimecl_wr <= '0';
 
-			when s_nimecl_nim_write =>
-				nimecl_wr    <= '1';
-				nimecl_din   <= nimecl_dout(31 downto 4) & I_NIM;
-				O_NIM        <= nimecl_dout(7 downto 4);
-				nimecl_state <= s_nimecl_ecl_addr;
+			when b"11" =>
+				-- previous address is b"10", next address is b"00"
+				-- read ECL input into memory
+				nimecl_wr  <= '1';
+				nimecl_din <= EI;
 
+			when others => null;
 		end case;
 	end process nimecl_io_1;
 
