@@ -23,8 +23,8 @@ architecture arch1 of vitek_tb is
 			   C_F_out   : out std_logic_vector(7 downto 4);
 			   B_OE      : out std_logic;
 			   B_DIR     : out std_logic;
-			   PORT_READ : in  std_logic;
-			   PORT_CLK  : in  std_logic;
+			   PORT_READ : out  std_logic;
+			   PORT_CLK  : out  std_logic;
 			   SWITCH1   : in  std_logic_vector(3 downto 0));
 	end component vitek_cpld_xc9536;
 
@@ -191,6 +191,8 @@ begin
 		port map(clk => A_CLK,
 			       D   => V_AM,
 			       Q   => I_AM);
+			       
+	
 
 	-- now work on the VME bus as a master
 	simu : process is

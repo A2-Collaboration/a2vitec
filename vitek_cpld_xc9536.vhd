@@ -19,8 +19,8 @@ entity vitek_cpld_xc9536 is
 		C_F_out   : out std_logic_vector(7 downto 4); -- to FPGA
 		B_OE      : out std_logic;      -- enables the VME data transceiver (active low)
 		B_DIR     : out std_logic;      -- chooses direction: High = A -> B = Slave -> "Master" (slaves drives VMEbus!)
-		PORT_READ : in  std_logic;
-		PORT_CLK  : in  std_logic;
+		PORT_READ : out std_logic;      -- 
+		PORT_CLK  : out std_logic;
 		-- input for the address 0-f (binary coded)
 		SWITCH1   : in  std_logic_vector(3 downto 0)
 	);
@@ -32,7 +32,7 @@ architecture arch1 of vitek_cpld_xc9536 is
 	signal fpga_start           : std_logic;
 	signal fpga_finished        : std_logic;
 	signal fpga_write           : std_logic;
-	constant delay_dtack_cycles : integer := 3;
+	constant delay_dtack_cycles : integer := 3; -- determines the delay for DTACK read cycles, in FPGA and "PORT" mode
 	signal delay_dtack_counter  : integer range 0 to delay_dtack_cycles - 1;
 
 	type state_type is (s_idle, s_check_address, s_wait_for_datastrobe, s_wait_for_fpga, s_wait_for_master, s_delay_dtack, s_finish_read);
@@ -57,7 +57,7 @@ begin
 	-- use the 16MHz VME bus clock for synchronized logic
 	clk <= V_SYSCLK;
 
-	-- I_A(11) will be used for programming the FPGA
+	-- I_A(11) will be used for programming the FPGA (port_mode)
 	board_address <= I_A(15 downto 12);
 
 	fsm : process is
@@ -75,10 +75,13 @@ begin
 					state <= s_check_address;
 				end if;
 				-- always set some default values
-				DTACK      <= '0';      -- inverted, i.e. set this signal high to assert V_DTACK on VMEbus (=low)
-				B_OE       <= '0';      -- enable the transceiver for the 16 VMEbus data lines
+				DTACK      <= '0';      -- inverted, i.e. set this signal high to assert V_DTACK on VMEbus (= active low)
+				B_OE       <= '1';      -- disable the transceiver for the 16 VMEbus data lines
 				B_DIR      <= '0';      -- listen on VMEbus (high-Z on B-Port = VMEbus side)
 				fpga_start <= '0';      -- tell the FPGA to idle
+				fpga_write <= '0';      -- active low, but FPGA checks this only when fpga_start = '1'
+				PORT_READ  <= '1';      -- active-low enable, thus the tri-state is high-Z by default on the VME databus
+				PORT_CLK   <= '0';      -- nothing happens on the port clock, or reset it from previous port mode access :)
 
 			when s_check_address =>
 				-- check if the master wants to talk to us:
@@ -93,20 +96,44 @@ begin
 				end if;
 
 			when s_wait_for_datastrobe =>
-				-- only double byte transfers are currently supported
-				-- single byte write attempts will trigger a timeout
-				-- since DTACK is never asserted
-				if V_DS(0) = '0' and V_DS(1) = '0' then
-					-- we may drive the VME bus now (or read it)
+				if V_DS(0) = '0' and V_DS(1) = '0' and I_A(11) = '0' then
+					-- the FPGA may drive the VME bus now (or read it)
+					-- only double byte transfers are currently supported
+					-- single byte write attempts will trigger a timeout
+					-- since DTACK is never asserted
+					B_OE       <= '0';
 					B_DIR      <= V_WRITE;
 					fpga_write <= V_WRITE;
 					fpga_start <= '1';
 					state      <= s_wait_for_fpga;
+				elsif (V_DS(0) = '0' or V_DS(1) = '0') and I_A(11) = '1' then
+					-- the port mode can access the 3 bits V_D(3 downto 1) 
+					-- connected to PORT_TDI (3), PORT_TCK (2), PORT_TMS (1), see schematic
+					-- is should be completely independent from the FPGA, 
+					-- also "supports" single byte transfers (not really tested)
+					
+					-- as in FPGA mode, when the master wants to read something (V_WRITE = '1'), 
+					-- the slave (=the VITEK) should drive the bus
+					if V_WRITE = '1' then
+						-- we simply put the status of the FF onto the bus
+						-- and acknowledge with a delayed DTACK
+						PORT_READ <= '0';
+						state <= s_delay_dtack;
+						delay_dtack_counter <= delay_dtack_cycles - 1;
+					else 
+						-- the data should be valid, so clock it in
+						-- PORT_CLK will be reset in s_idle
+						PORT_CLK <= '1';
+						-- we delay the DTACK by only one clock cycle (=62.5 ns),
+						-- VME Spec says we should give the master at least 30ns afer DS
+						state <= s_delay_dtack;
+						delay_dtack_counter <= 0;
+					end if;
 				else
 					-- Could be that this was an Address-Only cycle,
 					-- or previous cycle not finished yet.
 					-- Then go through the previous states again
-					-- (thus works as a two clock cycles delay)
+					-- (thus works as a two clock cycles delay or timeout for non-double byte transfers)
 					state <= s_idle;
 				end if;
 
@@ -125,6 +152,7 @@ begin
 				end if;
 
 			when s_delay_dtack =>
+				-- this state is used by FPGA and PORT mode
 				if delay_dtack_counter = 0 then
 					DTACK <= '1';
 					state <= s_wait_for_master;
@@ -136,9 +164,9 @@ begin
 				-- wait until master has seen the DTACK
 				if V_DS(0) = '1' and V_DS(1) = '1' then
 					-- be conservative and release the DTACK only in the idle state
-					-- but turn the transceiver to High-Z on both sides already now
-					-- by disabling it for one clock cycle
+					-- but turn the transceivers to High-Z on both sides already now 
 					B_OE       <= '1';
+					PORT_READ  <= '1';
 					fpga_start <= '0';
 					if fpga_write = '1' then
 						state <= s_finish_read;
