@@ -30,8 +30,10 @@ architecture arch1 of vitek_cpld_xc9536 is
 	signal clk                       : std_logic;
 	signal board_address             : std_logic_vector(3 downto 0);
 	signal fpga_start, fpga_finished : std_logic;
+	constant delay_dtack_cycles      : integer := 3;
+	signal delay_dtack_counter       : integer range 0 to delay_dtack_cycles - 1;
 
-	type state_type is (s_idle, s_check_address, s_wait_for_datastrobe, s_wait_for_fpga, s_wait_for_master);
+	type state_type is (s_idle, s_check_address, s_wait_for_datastrobe, s_wait_for_fpga, s_wait_for_master, s_delay_dtack);
 	signal state : state_type := s_idle;
 
 begin
@@ -53,7 +55,7 @@ begin
 	-- use the 16MHz VME bus clock for synchronized logic
 	clk <= V_SYSCLK;
 
-	-- I_A(15) not in use currently
+	-- I_A(11) will be used for programming the FPGA
 	board_address <= I_A(15 downto 12);
 
 	fsm : process is
@@ -107,8 +109,24 @@ begin
 
 			when s_wait_for_fpga =>
 				if fpga_finished = '1' then
+					if V_WRITE = '1' then
+						-- the slave is driving the bus, so delay the DTACK a bit
+						-- to ensure that the data has propagated befor it's 
+						-- read by the master
+						state               <= s_delay_dtack;
+						delay_dtack_counter <= delay_dtack_cycles - 1;
+					else
+						DTACK <= '1';
+						state <= s_wait_for_master;
+					end if;
+				end if;
+
+			when s_delay_dtack =>
+				if delay_dtack_counter = 0 then
 					DTACK <= '1';
 					state <= s_wait_for_master;
+				else
+					delay_dtack_counter <= delay_dtack_counter - 1;
 				end if;
 
 			when s_wait_for_master =>
