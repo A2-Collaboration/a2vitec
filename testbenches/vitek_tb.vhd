@@ -23,8 +23,8 @@ architecture arch1 of vitek_tb is
 			   C_F_out   : out std_logic_vector(7 downto 4);
 			   B_OE      : out std_logic;
 			   B_DIR     : out std_logic;
-			   PORT_READ : out  std_logic;
-			   PORT_CLK  : out  std_logic;
+			   PORT_READ : out std_logic;
+			   PORT_CLK  : out std_logic;
 			   SWITCH1   : in  std_logic_vector(3 downto 0));
 	end component vitek_cpld_xc9536;
 
@@ -75,6 +75,13 @@ architecture arch1 of vitek_tb is
 			   Q   : out std_logic_vector(INPUTS - 1 downto 0));
 	end component SN74LVC574APWT;
 
+	component SN74LVTH125PW
+		generic(INPUTS : integer);
+		port(OE : in  std_logic;
+			   I  : in  std_logic_vector(INPUTS - 1 downto 0);
+			   O  : out std_logic_vector(INPUTS - 1 downto 0));
+	end component SN74LVTH125PW;
+
 	constant period : time := 16.67 ns; -- 60MHz clock (from UTMI)
 	signal clk      : std_logic;
 
@@ -104,6 +111,9 @@ architecture arch1 of vitek_tb is
 	signal EI, EO       : std_logic_vector(16 downto 1);
 	signal D_OUT        : std_logic_vector(5 downto 1);
 
+	-- Port Mode signals, all in one
+	signal PORT_TDI_TCK_TMS : std_logic_vector(3 downto 1);
+	signal PORT_REG_Q       : std_logic_vector(7 downto 0);
 begin
 	clock_driver : process
 	begin
@@ -191,8 +201,19 @@ begin
 		port map(clk => A_CLK,
 			       D   => V_AM,
 			       Q   => I_AM);
-			       
-	
+
+	PORT_REG_1 : component SN74LVC574APWT
+		generic map(INPUTS => 8)
+		port map(clk => PORT_CLK,
+			       D   => V_D(7 downto 0),
+			       Q   => PORT_REG_Q);
+
+	PORT_TDI_TCK_TMS <= PORT_REG_Q(3 downto 1);
+	PORT_DRV_1 : component SN74LVTH125PW
+		generic map(INPUTS => 3)        -- the TDO has no connection to Q
+		port map(OE => PORT_READ,
+			       I  => PORT_TDI_TCK_TMS,
+			       O  => V_D(3 downto 1));
 
 	-- now work on the VME bus as a master
 	simu : process is
@@ -202,6 +223,7 @@ begin
 		constant test_ecl_out : std_logic_vector(15 downto 0) := x"dcba";
 		constant test_nim_in  : std_logic_vector(3 downto 0)  := x"a";
 		constant test_nim_out : std_logic_vector(3 downto 0)  := x"b";
+		constant test_port    : std_logic_vector(2 downto 0)  := b"101";
 		variable t0, t1       : time;
 	begin
 		-- after some setup time, set default values
@@ -443,7 +465,7 @@ begin
 		-- set the input
 		EI <= test_ecl_in;
 		wait for 50 ns;
-		-- read it over VME (input is in lower bytes)
+		-- read it over VME 
 		V_AM    <= b"101001";
 		V_A     <= (2 => '0', 1 => '0', others => '0');
 		V_LWORD <= '1';
@@ -475,7 +497,7 @@ begin
 		-- Test the ECL out (address 01)
 		t0 := now;
 		report "Testing ECL out" severity note;
-		-- set desired address (output is in upper bytes)
+		-- set desired address
 		V_AM    <= b"101001";
 		V_A     <= (2 => '0', 1 => '1', others => '0');
 		V_LWORD <= '1';
@@ -507,7 +529,7 @@ begin
 		-- set the input
 		I_NIM <= test_nim_in;
 		wait for 50 ns;
-		-- read it over VME (input is in lower bytes)
+		-- read it over VME 
 		V_AM    <= b"101001";
 		V_A     <= (2 => '1', 1 => '0', others => '0');
 		V_LWORD <= '1';
@@ -538,7 +560,7 @@ begin
 		-- Test the NIM out (address 11)
 		t0 := now;
 		report "Testing NIM out" severity note;
-		-- set desired address (output is in upper bytes)
+		-- set desired address 
 		V_AM    <= b"101001";
 		V_A     <= (2 => '1', 1 => '1', others => '0');
 		V_LWORD <= '1';
@@ -558,6 +580,66 @@ begin
 		wait until V_DTACK = '1';
 		-- see if it's at the output
 		assert O_NIM = test_nim_out report "##### Set NIM output is incorrect" severity error;
+		-- wait a bit longer
+		t1 := now - t0;
+		report "Done, took " & time'image(t1) severity note;
+		wait for 500 ns;
+
+		--------------------------------------
+		-- Test a PORT write (V_A(11) = '1')
+		t0 := now;
+		report "Writing something to PORT" severity note;
+		-- set desired address 
+		V_AM    <= b"101001";
+		V_A     <= (11 => '1', others => '0');
+		V_LWORD <= '1';
+		V_WRITE <= '0';
+		-- tell the address
+		wait for 30 ns;
+		V_AS <= '0';
+		-- set the data
+		V_D  <= x"000" & test_port & b"0";
+		wait for 30 ns;
+		V_DS <= (others => '0');
+		-- wait for data ack
+		wait until V_DTACK = '0';
+		-- acknowledge the transfer
+		V_AS <= '1';
+		V_DS <= (others => '1');
+		wait until V_DTACK = '1';
+		-- see if it's at the register (the scope of the testbench ;)
+		assert PORT_TDI_TCK_TMS = test_port report "##### PORT write failed" severity error;
+		-- wait a bit longer
+		t1 := now - t0;
+		report "Done, took " & time'image(t1) severity note;
+		wait for 500 ns;
+
+		--------------------------------------
+		-- Test a PORT read (V_A(11) = '1')
+		t0 := now;
+		report "Reading it back from PORT" severity note;
+		wait for 50 ns;
+		-- read it over VME
+		V_AM    <= b"101001";
+		V_A     <= (11 => '1', others => '0');
+		V_LWORD <= '1';
+		V_WRITE <= '1';
+		V_D     <= (others => 'Z');
+		wait for 30 ns;
+		-- assert address strobe to tell the address
+		V_AS <= '0';
+		-- assert data strobe to request the data
+		V_DS <= (others => '0');
+		-- wait until data is present
+		wait until V_DTACK = '0';
+		-- immediately negate address strobe
+		V_AS <= '1';
+		-- check received data
+		assert V_D(3 downto 1) = test_port report "##### PORT read failed" severity error;
+		-- acknowledge the data
+		V_DS <= (others => '1');
+		-- and wait for slave to release the data lines
+		wait until V_DTACK = '1';
 		-- wait a bit longer
 		t1 := now - t0;
 		report "Done, took " & time'image(t1) severity note;
