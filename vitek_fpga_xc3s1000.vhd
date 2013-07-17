@@ -18,7 +18,7 @@ entity vitek_fpga_xc3s1000 is
 		-- by Klaus Weindel
 		-- general input / output
 		O_NIM            : out   std_logic_vector(4 downto 1); -- NIM output
-		I_NIM            : in    std_logic_vector(4 downto 0); -- NIM input
+		I_NIM            : in    std_logic_vector(4 downto 1); -- NIM input
 		EO               : out   std_logic_vector(16 downto 1); -- ECL output
 		EI               : in    std_logic_vector(16 downto 1); -- ECL input
 		A_X              : out   std_logic_vector(8 downto 1); -- AVR microprocessor
@@ -63,13 +63,20 @@ architecture arch1 of vitek_fpga_xc3s1000 is
 	-- VME stuff: Write to/Read from dualportram (=memory), 
 	-- handle CPLD (which does the VME communication)
 	type vme_state_type is (s_vme_idle, s_vme_write, s_vme_read, s_vme_finish);
-	signal vme_state                 : vme_state_type := s_vme_idle;
+	signal vme_state                 : vme_state_type                               := s_vme_idle;
 	signal vme_wr                    : std_logic;
-	constant vme_addr_size           : integer        := 3; -- 2^3=8 vme registers maximum (currently)
+	constant vme_addr_size           : integer                                      := 2; -- 2^2=4 vme registers maximum (currently)
 	signal vme_addr                  : std_logic_vector(vme_addr_size - 1 downto 0) := (others => '0');
 	signal vme_din, vme_dout         : std_logic_vector(31 downto 0);
 	signal fpga_start, fpga_finished : std_logic;
 	signal V_WRITE                   : std_logic;
+
+	-- NIM/ECL input/output
+	type nimecl_state_type is (s_nimecl_ecl_addr, s_nimecl_ecl_write, s_nimecl_nim_addr, s_nimecl_nim_write);
+	signal nimecl_state            : nimecl_state_type                            := s_nimecl_ecl_addr;
+	signal nimecl_wr               : std_logic;
+	signal nimecl_addr             : std_logic_vector(vme_addr_size - 1 downto 0) := (others => '0');
+	signal nimecl_din, nimecl_dout : std_logic_vector(31 downto 0);
 
 begin
 
@@ -97,9 +104,6 @@ begin
 	D_MS     <= '0';
 	D_LE     <= '0';
 	D_CLK    <= '0';
-
-	EO   <= (others => '0');
-	O_NIM <= (others => '0');
 
 	-- the following handles the communication
 	-- with the CPLD
@@ -180,10 +184,47 @@ begin
 			       a_din  => vme_din,
 			       a_dout => vme_dout,
 			       b_clk  => clk,
-			       b_wr   => '0',
-			       b_addr => b"000",
-			       b_din  => x"00000000",
-			       b_dout => open);
+			       b_wr   => nimecl_wr,
+			       b_addr => nimecl_addr,
+			       b_din  => nimecl_din,
+			       b_dout => nimecl_dout);
+
+	-- we simply map the ECL and NIM outputs and inputs into the ram
+	-- this is not the most flexible approach, but it's good start
+	-- if there are some scalers to be implemented,
+	-- they should have there own VME access
+	nimecl_io_1 : process is
+	begin
+		wait until rising_edge(clk);
+
+		-- and toggle between ecl and nim, 
+		-- this effectively results in an update cycle of 4*clockcycle =~ 120 ns (length of the FSM)
+		-- since VME bus is a factor 5 (at least) slower, that doesn't really matter now
+		case nimecl_state is
+			when s_nimecl_ecl_addr =>
+				nimecl_wr    <= '0';
+				nimecl_addr  <= (0 => '0', others => '0');
+				nimecl_state <= s_nimecl_ecl_write;
+
+			when s_nimecl_ecl_write =>
+				nimecl_wr    <= '1';
+				nimecl_din   <= nimecl_dout(31 downto 16) & EI;
+				EO           <= nimecl_dout(31 downto 16);
+				nimecl_state <= s_nimecl_nim_addr;
+
+			when s_nimecl_nim_addr =>
+				nimecl_wr    <= '0';
+				nimecl_addr  <= (0 => '1', others => '0');
+				nimecl_state <= s_nimecl_nim_write;
+
+			when s_nimecl_nim_write =>
+				nimecl_wr    <= '1';
+				nimecl_din   <= nimecl_dout(31 downto 4) & I_NIM;
+				O_NIM        <= nimecl_dout(7 downto 4);
+				nimecl_state <= s_nimecl_ecl_addr;
+
+		end case;
+	end process nimecl_io_1;
 
 end arch1;
 

@@ -38,7 +38,7 @@ architecture arch1 of vitek_tb is
 			   UTMI_txvalid     : out   std_logic;
 			   LED_module       : out   std_logic;
 			   O_NIM            : out   std_logic_vector(4 downto 1);
-			   I_NIM            : in    std_logic_vector(4 downto 0);
+			   I_NIM            : in    std_logic_vector(4 downto 1);
 			   EO               : out   std_logic_vector(16 downto 1);
 			   EI               : in    std_logic_vector(16 downto 1);
 			   A_X              : out   std_logic_vector(8 downto 1);
@@ -100,7 +100,7 @@ architecture arch1 of vitek_tb is
 
 	-- FPGA signals
 	signal F_D, V_D : std_logic_vector(15 downto 0);
-	signal I_NIM    : std_logic_vector(4 downto 0);
+	signal I_NIM    : std_logic_vector(4 downto 1);
 	signal EI       : std_logic_vector(16 downto 1);
 	signal D_OUT    : std_logic_vector(5 downto 1);
 
@@ -243,7 +243,7 @@ begin
 		-- wait until data is present
 		wait until V_DTACK = '0';
 		-- check received data and...
-		assert V_D = x"0000" report "Received data is undefined, that's weird" severity error;
+		assert V_D = x"0000" report "Received data is not zero, that's weird" severity error;
 		-- state immediately another address propagation
 		-- very short "wait"s here just for testing
 		V_AS <= '1';
@@ -273,7 +273,7 @@ begin
 		report "Testing write cycle 1" severity note;
 		-- set desired address
 		V_AM    <= b"101001";
-		V_A     <= (1 => '1', others => '0');
+		V_A     <= (3 => '1', 1 => '0', others => '0');
 		V_LWORD <= '1';
 		V_WRITE <= '0';
 		-- tell the address
@@ -312,7 +312,7 @@ begin
 		report "Testing write cycle 2" severity note;
 		-- set desired address
 		V_AM    <= b"101001";
-		V_A     <= (2 => '1', others => '0');
+		V_A     <= (3 => '1', 1 => '1', others => '0');
 		V_LWORD <= '1';
 		V_WRITE <= '0';
 		-- tell the address
@@ -376,7 +376,7 @@ begin
 		report "Reading back data 2" severity note;
 		-- set correct address
 		V_AM    <= b"101101";
-		V_A     <= (2 => '1', others => '0');
+		V_A     <= (3 => '1', 1 => '1', others => '0');
 		V_LWORD <= '1';
 		V_WRITE <= '1';
 		V_D     <= (others => 'Z');
@@ -406,7 +406,7 @@ begin
 		report "Reading back data 1" severity note;
 		-- set correct addressV_AS <= '1';
 		V_AM    <= b"101001";
-		V_A     <= (1 => '1', others => '0');
+		V_A     <= (3 => '1', 1 => '0',  others => '0');
 		V_LWORD <= '1';
 		V_WRITE <= '1';
 		V_D     <= (others => 'Z');
