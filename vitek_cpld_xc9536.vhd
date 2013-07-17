@@ -27,13 +27,15 @@ entity vitek_cpld_xc9536 is
 end vitek_cpld_xc9536;
 
 architecture arch1 of vitek_cpld_xc9536 is
-	signal clk                       : std_logic;
-	signal board_address             : std_logic_vector(3 downto 0);
-	signal fpga_start, fpga_finished : std_logic;
-	constant delay_dtack_cycles      : integer := 3;
-	signal delay_dtack_counter       : integer range 0 to delay_dtack_cycles - 1;
+	signal clk                  : std_logic;
+	signal board_address        : std_logic_vector(3 downto 0);
+	signal fpga_start           : std_logic;
+	signal fpga_finished        : std_logic;
+	signal fpga_write           : std_logic;
+	constant delay_dtack_cycles : integer := 3;
+	signal delay_dtack_counter  : integer range 0 to delay_dtack_cycles - 1;
 
-	type state_type is (s_idle, s_check_address, s_wait_for_datastrobe, s_wait_for_fpga, s_wait_for_master, s_delay_dtack);
+	type state_type is (s_idle, s_check_address, s_wait_for_datastrobe, s_wait_for_fpga, s_wait_for_master, s_delay_dtack, s_finish_read);
 	signal state : state_type := s_idle;
 
 begin
@@ -47,7 +49,7 @@ begin
 	fpga_finished <= C_F_in(1);
 
 	C_F_out <= (
-			5      => V_WRITE,          -- high if we should output something on databus (read cycle)
+			5      => fpga_write,       -- high if we should output something on databus (read cycle)
 			6      => fpga_start,       -- high if FPGA can start working now
 			others => '0'               -- others are unused
 		);
@@ -97,6 +99,7 @@ begin
 				if V_DS(0) = '0' and V_DS(1) = '0' then
 					-- we may drive the VME bus now (or read it)
 					B_DIR      <= V_WRITE;
+					fpga_write <= V_WRITE;
 					fpga_start <= '1';
 					state      <= s_wait_for_fpga;
 				else
@@ -109,7 +112,7 @@ begin
 
 			when s_wait_for_fpga =>
 				if fpga_finished = '1' then
-					if V_WRITE = '1' then
+					if fpga_write = '1' then
 						-- the slave is driving the bus, so delay the DTACK a bit
 						-- to ensure that the data has propagated befor it's 
 						-- read by the master
@@ -137,8 +140,17 @@ begin
 					-- by disabling it for one clock cycle
 					B_OE       <= '1';
 					fpga_start <= '0';
-					state      <= s_idle;
+					if fpga_write = '1' then
+						state <= s_finish_read;
+					else
+						state <= s_idle;
+					end if;
 				end if;
+
+			when s_finish_read =>
+				B_DIR <= '0';
+				state <= s_idle;
+
 		end case;
 	end process fsm;
 
