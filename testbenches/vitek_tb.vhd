@@ -247,7 +247,7 @@ begin
 		-- wait until data is present
 		wait until V_DTACK = '0';
 		-- check received data and...
-		assert V_D = x"0000" report "Received data is not zero, that's weird" severity error;
+		assert V_D = x"0000" report "##### Received data is not zero, that's weird" severity error;
 		-- state immediately another address propagation
 		-- very short "wait"s here just for testing
 		V_AS <= '1';
@@ -364,7 +364,7 @@ begin
 		V_DS <= (others => '0');
 		-- DTACK should stay high here
 		for i in 1 to 30 loop
-			assert V_DTACK = '1' report "DTACK went low!" severity error;
+			assert V_DTACK = '1' report "##### DTACK went low!" severity error;
 			wait for 5 ns;
 		end loop;
 		V_AS <= '1';
@@ -394,7 +394,7 @@ begin
 		-- immediately negate address strobe
 		V_AS <= '1';
 		-- check received data and...
-		assert V_D = test_word2 report "Received data 2 is incorrect" severity error;
+		assert V_D = test_word2 report "##### Received data 2 is incorrect" severity error;
 		-- acknowledge the data
 		V_DS <= (others => '1');
 		-- and wait for slave to release the data lines
@@ -424,7 +424,7 @@ begin
 		-- immediately negate address strobe
 		V_AS <= '1';
 		-- check received data and...
-		assert V_D = test_word1 report "Received data 1 is incorrect" severity error;
+		assert V_D = test_word1 report "##### Received data 1 is incorrect" severity error;
 		-- acknowledge the data
 		V_DS <= (others => '1');
 		-- and wait for slave to release the data lines
@@ -458,7 +458,7 @@ begin
 		V_AS <= '1';
 		-- check received data
 		-- BUT NOTE THAT VME has big endian, so swap the two bytes
-		assert V_D(15 downto 8) = test_ecl_in(7 downto 0) and V_D(7 downto 0) = test_ecl_in(15 downto 8) report "Received ECL data is incorrect" severity error;
+		assert V_D(15 downto 8) = test_ecl_in(7 downto 0) and V_D(7 downto 0) = test_ecl_in(15 downto 8) report "##### Received ECL data is incorrect" severity error;
 		-- acknowledge the data
 		V_DS <= (others => '1');
 		-- and wait for slave to release the data lines
@@ -492,7 +492,7 @@ begin
 		V_DS <= (others => '1');
 		wait until V_DTACK = '1';
 		-- see if it's at the output
-		assert EO = test_ecl_out report "Set ECL output is incorrect" severity error;
+		assert EO = test_ecl_out report "##### Set ECL output is incorrect" severity error;
 		-- wait a bit longer
 		t1 := now - t0;
 		report "Done, took " & time'image(t1) severity note;
@@ -521,7 +521,7 @@ begin
 		-- immediately negate address strobe
 		V_AS <= '1';
 		-- check received data
-		assert V_D(11 downto 8) = test_nim_in report "Received NIM data is incorrect" severity error;
+		assert V_D(11 downto 8) = test_nim_in report "##### Received NIM data is incorrect" severity error;
 		-- acknowledge the data
 		V_DS <= (others => '1');
 		-- and wait for slave to release the data lines
@@ -555,7 +555,7 @@ begin
 		V_DS <= (others => '1');
 		wait until V_DTACK = '1';
 		-- see if it's at the output
-		assert O_NIM = test_nim_out report "Set NIM output is incorrect" severity error;
+		assert O_NIM = test_nim_out report "##### Set NIM output is incorrect" severity error;
 		-- wait a bit longer
 		t1 := now - t0;
 		report "Done, took " & time'image(t1) severity note;
