@@ -235,7 +235,7 @@ begin
 		V_DS    <= (others => '1');
 		V_WRITE <= '1';
 		V_D     <= (others => '0');
-		SWITCH1 <= (others => '0');
+		SWITCH1 <= (others => '1');     -- SWITCH1 seems to be active low (pullup) 
 		I_NIM   <= (others => '0');
 		EI      <= (others => '0');
 

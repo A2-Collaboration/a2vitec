@@ -58,7 +58,9 @@ begin
 	clk <= V_SYSCLK;
 
 	-- I_A(11) will be used for programming the FPGA (port_mode)
-	board_address <= I_A(15 downto 12);
+  -- invert the address since the switch is active low,
+	-- also don't forget to set the inputs to float, see UCF
+	board_address <= not I_A(15 downto 12);
 
 	fsm : process is
 	begin
