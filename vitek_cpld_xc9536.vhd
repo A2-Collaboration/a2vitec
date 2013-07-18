@@ -19,8 +19,8 @@ entity vitek_cpld_xc9536 is
 		C_F_out   : out std_logic_vector(7 downto 4); -- to FPGA
 		B_OE      : out std_logic;      -- enables the VME data transceiver (active low)
 		B_DIR     : out std_logic;      -- chooses direction: High = A -> B = Slave -> "Master" (slaves drives VMEbus!)
-		PORT_READ : out std_logic;      -- 
-		PORT_CLK  : out std_logic;
+		PORT_READ : out std_logic;      -- port mode: active-low enable of the four tri-state drivers 
+		PORT_CLK  : out std_logic;      -- port mode: latches 8bits of the VMEbus data on rising edge, can control JTAG of FPGA
 		-- input for the address 0-f (binary coded)
 		SWITCH1   : in  std_logic_vector(3 downto 0)
 	);
