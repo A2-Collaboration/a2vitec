@@ -135,17 +135,16 @@ begin
 
 			when s_vme_write =>
 				-- the address is already set above, 
-				-- so multiplex the bytes into the 16bit wide memory
-				vme_din   <= F_D(7 downto 0) & F_D(15 downto 8);
+				-- so read the VMEbus data into the memory
+				vme_din   <= F_D;
 				vme_wr    <= '1';
 				vme_state <= s_vme_finish;
 
 			when s_vme_read =>
 				-- the address is already set above, 
-				-- so multiplex the 16bit wide memory to the bytes
-				F_D(7 downto 0)  <= vme_dout(15 downto 8);
-				F_D(15 downto 8) <= vme_dout(7 downto 0);
-				vme_state        <= s_vme_finish;
+				-- so output the memory data to the VMEbus
+				F_D       <= vme_dout;
+				vme_state <= s_vme_finish;
 
 			when s_vme_finish =>
 				-- tell CPLD we're ready and 
@@ -195,7 +194,7 @@ begin
 		-- precise timing is needed here, and don't get confused who is writing what from where :)
 		-- reading from memory needs waiting one cycle after setting the address, thus previous address is relevant
 		-- writing to memory needs setting the data ahead, thus next address is relevant
-		
+
 		case nimecl_state is
 			when b"00" =>
 				-- previous address is b"11", next address is b"01"

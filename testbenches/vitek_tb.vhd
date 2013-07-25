@@ -481,8 +481,7 @@ begin
 		-- immediately negate address strobe
 		V_AS <= '1';
 		-- check received data
-		-- BUT NOTE THAT VME has big endian, so swap the two bytes
-		assert V_D(15 downto 8) = test_ecl_in(7 downto 0) and V_D(7 downto 0) = test_ecl_in(15 downto 8) report "##### Received ECL data is incorrect" severity error;
+		assert V_D = test_ecl_in report "##### Received ECL data is incorrect" severity error;
 		-- acknowledge the data
 		V_DS <= (others => '1');
 		-- and wait for slave to release the data lines
@@ -505,8 +504,8 @@ begin
 		-- tell the address
 		wait for 30 ns;
 		V_AS <= '0';
-		-- set the data, but swap the bytes (big endian again)
-		V_D  <= test_ecl_out(7 downto 0) & test_ecl_out(15 downto 8);
+		-- set the data
+		V_D  <= test_ecl_out;
 		wait for 30 ns;
 		V_DS <= (others => '0');
 		-- wait for data ack
@@ -545,7 +544,7 @@ begin
 		-- immediately negate address strobe
 		V_AS <= '1';
 		-- check received data
-		assert V_D(11 downto 8) = test_nim_in report "##### Received NIM data is incorrect" severity error;
+		assert V_D(3 downto 0) = test_nim_in report "##### Received NIM data is incorrect" severity error;
 		-- acknowledge the data
 		V_DS <= (others => '1');
 		-- and wait for slave to release the data lines
@@ -568,8 +567,8 @@ begin
 		-- tell the address
 		wait for 30 ns;
 		V_AS <= '0';
-		-- set the data, remember where the lowest byte is
-		V_D  <= x"0" & test_nim_out & x"00";
+		-- set the data
+		V_D  <= x"000" & test_nim_out;
 		wait for 30 ns;
 		V_DS <= (others => '0');
 		-- wait for data ack
