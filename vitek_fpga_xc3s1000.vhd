@@ -6,7 +6,7 @@ entity vitek_fpga_xc3s1000 is
 	port(
 		-- signals local to the micromodule itself
 		-- this is the 60 MHz clock input (selected via UTMI_databus16_8)
-		CLK              : in    std_logic;
+		CLK60_IN           : in    std_logic;
 		UTMI_databus16_8 : out   std_logic; -- 1 = 30MHz, 0 = 60MHz
 		UTMI_reset       : out   std_logic;
 		UTMI_xcvrselect  : out   std_logic;
@@ -46,6 +46,15 @@ entity vitek_fpga_xc3s1000 is
 end vitek_fpga_xc3s1000;
 
 architecture arch1 of vitek_fpga_xc3s1000 is
+	-- clock handling
+	signal clk, clk60, clk100 : std_logic;
+	component dcm_60to100
+		port(CLK60_IN   : in  std_logic;
+			   CLK100_OUT : out std_logic;
+			   CLK60_OUT  : out std_logic);
+	end component dcm_60to100;
+	
+	-- VME CPLD handling
 	constant vme_addr_size : integer := 3; -- 2^3=8 vme registers maximum (currently)
 	component vme_cpld_handler
 		generic(vme_addr_size : integer);
@@ -93,6 +102,12 @@ begin
 	D_LE     <= '0';
 	D_CLK    <= '0';
 
+	dcm_1 : component dcm_60to100
+		port map(CLK60_IN   => CLK60_IN,
+			       CLK100_OUT => CLK100,
+			       CLK60_OUT  => CLK60);
+	clk <= clk100;
+	
 	-- port b can be used to handle the VME data transparently (see below!)
 	vme_cpld_handler_1 : component vme_cpld_handler
 		generic map(vme_addr_size => vme_addr_size)

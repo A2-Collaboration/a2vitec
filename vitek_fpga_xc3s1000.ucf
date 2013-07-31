@@ -12,7 +12,7 @@
 #
 ###############################
 # Mandatory UTMI signals to get a clock
-NET "CLK"              LOC = "D9";
+NET "CLK60_IN"              LOC = "D9";
 NET "UTMI_databus16_8" LOC = "B14";
 
 # UTMI signals only used with USB function
@@ -177,7 +177,7 @@ NET "V_V[1]"   LOC = P8; # LL38 Bank5
 
 
 #Created by Constraints Editor (xc3s1000-ft256-4) - 2013/07/15
-NET "CLK" TNM_NET = "CLK";
+NET "CLK60_IN" TNM_NET = "CLK";
 TIMESPEC TS_CLK = PERIOD "CLK" 60 MHz HIGH 50 %;
 
 # PlanAhead Generated IO constraints 
@@ -200,7 +200,7 @@ NET "OHO_RCLK" IOSTANDARD = LVCMOS33;
 NET "OHO_SCLK" IOSTANDARD = LVCMOS33;
 NET "OHO_SER" IOSTANDARD = LVCMOS33;
 NET "D_D" IOSTANDARD = LVCMOS33;
-NET "CLK" IOSTANDARD = LVCMOS33;
+NET "CLK60_IN" IOSTANDARD = LVCMOS33;
 NET "UTMI_databus16_8" IOSTANDARD = LVCMOS33;
 NET "UTMI_txvalid" IOSTANDARD = LVCMOS33;
 NET "UTMI_opmode1" IOSTANDARD = LVCMOS33;

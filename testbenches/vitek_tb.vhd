@@ -29,7 +29,7 @@ architecture arch1 of vitek_tb is
 	end component vitek_cpld_xc9536;
 
 	component vitek_fpga_xc3s1000
-		port(CLK              : in    std_logic;
+		port(CLK60_IN         : in    std_logic;
 			   UTMI_databus16_8 : out   std_logic;
 			   UTMI_reset       : out   std_logic;
 			   UTMI_xcvrselect  : out   std_logic;
@@ -154,7 +154,7 @@ begin
 	-- instantiate FPGA, neglect the unneeded I/O (delay, NIM, ECL)
 	D_OUT <= (others => '0');
 	FPGA_1 : vitek_fpga_xc3s1000
-		port map(CLK              => CLK,
+		port map(CLK60_IN         => CLK,
 			       UTMI_databus16_8 => open,
 			       UTMI_reset       => open,
 			       UTMI_xcvrselect  => open,
