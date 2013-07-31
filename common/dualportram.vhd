@@ -36,10 +36,10 @@ begin
 	process(a_clk)
 	begin
 		if rising_edge(a_clk) then
+			a_dout <= mem(to_integer(unsigned(a_addr)));
 			if (a_wr = '1') then
 				mem(to_integer(unsigned(a_addr))) := a_din;
 			end if;
-			a_dout <= mem(to_integer(unsigned(a_addr)));
 		end if;
 	end process;
 
@@ -47,10 +47,10 @@ begin
 	process(b_clk)
 	begin
 		if rising_edge(b_clk) then
+			b_dout <= mem(to_integer(unsigned(b_addr)));
 			if (b_wr = '1') then
 				mem(to_integer(unsigned(b_addr))) := b_din;
 			end if;
-			b_dout <= mem(to_integer(unsigned(b_addr)));
 		end if;
 	end process;
 
