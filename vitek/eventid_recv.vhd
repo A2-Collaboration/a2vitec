@@ -7,24 +7,15 @@ use work.helpers_std.all;
 entity eventid_recv is
 	port(
 		CLK               : in  std_logic; -- must be 100 MHz!
-		TIMER_TICK_1US_IN : in  std_logic; -- 1 micro second tick, synchronous to
+		TIMER_TICK_1US_IN : in  std_logic; -- 1 micro second tick, synchronous to CLK
 
 		-- Module inputs
 		SERIAL_IN         : in  std_logic; -- serial raw in, externally clock'ed at 12.5 MHz
 		EXT_TRG_IN        : in  std_logic; -- external trigger in, ~10us later
 		-- the external trigger id is sent on SERIAL_IN
 
-		--data output for read-out
-		TRIGGER_IN        : in  std_logic;
-		DATA_OUT          : out std_logic_vector(31 downto 0);
-		WRITE_OUT         : out std_logic;
-		STATUSBIT_OUT     : out std_logic_vector(31 downto 0);
-		FINISHED_OUT      : out std_logic;
-
-		--Registers / Debug		 
-		CONTROL_REG_IN    : in  std_logic_vector(31 downto 0);
-		STATUS_REG_OUT    : out std_logic_vector(31 downto 0) := (others => '0');
-		HEADER_REG_OUT    : out std_logic_vector(1 downto 0)
+		EVENTID_OUT  : out std_logic_vector(31 downto 0); 
+		DEBUG_OUT    : out std_logic_vector(31 downto 0)
 	);
 end entity;
 
@@ -35,17 +26,7 @@ end entity;
 --Stopbit/Controlbit: "1"
 --Parity check over trig Nr and parity bit
 
---Data Format of DATA_OUT: 4 words (goes into DAQ stream)
--- Word 1			 : 32bit Trigger Number 
--- Word 2			 :
---	 Bit 31-5	 : reserved
---	 Bit 4		 : No Id received (timeout)
---	 Bit 3		 : Stop/Control Bit (should be set)
---	 Bit 2		 : Parity Bit (should be zero)
---	 Bit 1		 : Start Bit (should be set)
---	 Bit 0		 : Error flag (either parity wrong or no stop/control bit seen)
 
---statusbit 23 is error flag = Bit 0 of DATA_OUT word 2
 
 architecture arch1 of eventid_recv is
 
@@ -62,7 +43,7 @@ architecture arch1 of eventid_recv is
 	signal done          : std_logic;
 
 	signal data_eventid_reg : std_logic_vector(31 downto 0);
-	signal data_status_reg  : std_logic_vector(31 downto 0);
+	signal data_status_reg  : std_logic_vector(4 downto 0);
 
 	signal timeout_seen : std_logic := '0';
 
@@ -72,14 +53,7 @@ architecture arch1 of eventid_recv is
 	type state_t is (IDLE, WAIT_FOR_STARTBIT, WAIT1, WAIT2, WAIT3, READ_BIT, WAIT5, WAIT6, WAIT7, WAIT8, NO_TRG_ID_RECV, FINISH);
 	signal state : state_t := IDLE;
 
-	type rdo_state_t is (RDO_IDLE, RDO_WAIT, RDO_WRITE1, RDO_WRITE2, RDO_WRITE3, RDO_WRITE4, RDO_FINISH);
-	signal rdostate : rdo_state_t := RDO_IDLE;
-
-	signal config_rdo_disable_i : std_logic;
-
 begin
-	-- we tell the CTS that we send four words of over DATA_OUT
-	HEADER_REG_OUT <= b"10";
 
 	timer_tick_1us <= TIMER_TICK_1US_IN;
 
@@ -172,53 +146,16 @@ begin
 
 			-- check if start and control bit is 1 and parity is okay
 			if shift_reg(34) = '1' and shift_reg(0) = '1' and xor_all(shift_reg(33 downto 1)) = '0' then
+				-- set error flag low
 				data_status_reg(0) <= '0';
 			else
+			  -- set error flag high
 				data_status_reg(0) <= '1';
 			end if;
 		end if;
 	end process;
 
-	PROC_RDO : process
-	begin
-		wait until rising_edge(CLK);
-		WRITE_OUT     <= '0';
-		FINISHED_OUT  <= config_rdo_disable_i;
-		STATUSBIT_OUT <= (23 => data_status_reg(0), others => '0');
-		case rdostate is
-			when RDO_IDLE =>
-				if TRIGGER_IN = '1' and config_rdo_disable_i = '0' then
-					-- always wait so that PROC_REG_INFO sets data_eventid_reg correctly
-					rdostate <= RDO_WAIT;
-				end if;
-			when RDO_WAIT =>
-				if done = '1' then
-					rdostate <= RDO_WRITE1;
-				end if;
-			when RDO_WRITE1 =>
-				rdostate  <= RDO_WRITE2;
-				DATA_OUT  <= data_eventid_reg;
-				WRITE_OUT <= '1';
-			when RDO_WRITE2 =>
-				rdostate  <= RDO_WRITE3;
-				DATA_OUT  <= data_status_reg;
-				WRITE_OUT <= '1';
-			when RDO_WRITE3 =>
-				rdostate  <= RDO_WRITE4;
-				DATA_OUT  <= x"deadbeef";
-				WRITE_OUT <= '1';
-			when RDO_WRITE4 =>
-				rdostate  <= RDO_FINISH;
-				DATA_OUT  <= x"deadbeef";
-				WRITE_OUT <= '1';
-			when RDO_FINISH =>
-				FINISHED_OUT <= '1';
-				rdostate     <= RDO_IDLE;
-		end case;
-	end process;
-
-	config_rdo_disable_i <= CONTROL_REG_IN(0);
-
-	STATUS_REG_OUT <= data_status_reg(0) & std_logic_vector(to_unsigned(bitcnt, 6)) & data_eventid_reg(24 downto 0);
+	DEBUG_OUT <= x"00000" & std_logic_vector(to_unsigned(bitcnt, 6)) & data_status_reg; 
+	EVENTID_OUT <= data_eventid_reg;
 
 end architecture;
