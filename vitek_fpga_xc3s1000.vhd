@@ -81,8 +81,8 @@ architecture arch1 of vitek_fpga_xc3s1000 is
 			   b_addr     : out std_logic_vector(2 downto 0);
 			   b_din      : out std_logic_vector(15 downto 0);
 			   b_dout     : in  std_logic_vector(15 downto 0);
-			   EVENTID_IN : in std_logic_vector(31 downto 0);
-			   DEBUG_IN   : in std_logic_vector(31 downto 0));
+			   EVENTID_IN : in  std_logic_vector(31 downto 0);
+			   STATUS_IN  : in  std_logic_vector(10 downto 0));
 	end component ram_updater;
 
 	-- eventid receiver
@@ -92,7 +92,7 @@ architecture arch1 of vitek_fpga_xc3s1000 is
 			   SERIAL_IN         : in  std_logic;
 			   EXT_TRG_IN        : in  std_logic;
 			   EVENTID_OUT       : out std_logic_vector(31 downto 0);
-			   DEBUG_OUT         : out std_logic_vector(31 downto 0));
+			   STATUS_OUT        : out std_logic_vector(10 downto 0));
 	end component eventid_recv;
 
 	-- generate 1us ticks, can also be useful somewhere else
@@ -108,8 +108,8 @@ architecture arch1 of vitek_fpga_xc3s1000 is
 	signal b_din, b_dout : std_logic_vector(15 downto 0);
 
 	-- event id receiver 
-	signal EVENTID        : std_logic_vector(31 downto 0);
-	signal DEBUG          : std_logic_vector(31 downto 0);
+	signal eventid        : std_logic_vector(31 downto 0);
+	signal eventid_status : std_logic_vector(10 downto 0);
 	signal timer_tick_1us : std_logic;
 
 begin
@@ -165,7 +165,7 @@ begin
 	-- ram updater stuff
 	-- we do not use the upper half of port b at the moment, 
 	-- thus via port a testing of VME access is possible at those addresses
-	b_addr(4) <= '0'; 
+	b_addr(4) <= '0';
 	ram_updater_1 : component ram_updater
 		port map(clk        => clk,
 			       O_NIM      => O_NIM,
@@ -176,8 +176,8 @@ begin
 			       b_addr     => b_addr(3 downto 1),
 			       b_din      => b_din,
 			       b_dout     => b_dout,
-			       EVENTID_IN => EVENTID,
-			       DEBUG_IN   => DEBUG);
+			       EVENTID_IN => eventid,
+			       STATUS_IN  => eventid_status);
 
 	-- event id receiver including timer tick generation
 	eventid_recv_1 : component eventid_recv
@@ -185,8 +185,8 @@ begin
 			       TIMER_TICK_1US_IN => timer_tick_1us,
 			       SERIAL_IN         => I_NIM(2), -- second one is serial in
 			       EXT_TRG_IN        => I_NIM(1), -- first nim input is interrupt/trigger
-			       EVENTID_OUT       => EVENTID,
-			       DEBUG_OUT         => DEBUG);
+			       EVENTID_OUT       => eventid,
+			       STATUS_OUT        => eventid_status);
 
 	timer_ticks_1 : component timer_ticks
 		generic map(ticks => 100)

@@ -19,22 +19,25 @@ entity ram_updater is
 
 		-- event id stuff
 		EVENTID_IN : in  std_logic_vector(31 downto 0);
-		DEBUG_IN   : in  std_logic_vector(31 downto 0)
+		STATUS_IN  : in  std_logic_vector(10 downto 0)
 	);
 end entity ram_updater;
 
 architecture RTL of ram_updater is
 	signal state : unsigned(2 downto 0) := (others => '0');
 
+	-- signals needed to handle the IRQ/ACK signals
 	signal eventid_upper_reg : std_logic_vector(31 downto 16);
-	signal debug_reg         : std_logic_vector(31 downto 0);
+	signal status_reg        : std_logic_vector(10 downto 0);
+	signal ack_sig, irq, irq_prev          : std_logic;
 begin
-	-- we simply map the ECL and NIM outputs and inputs into the ram
+	-- ack signal used to buffer its state in the ram
+	O_NIM(1) <= ack_sig;
+	
+	
 	-- we did not combine the NIM outputs since this complicates ensuring 
 	-- the "atomic" VME read/writes
-	-- this is not the most flexible approach, but it's good start
-	-- if there are some scalers to be implemented,
-	-- they should have there own VME access (I guess)
+	-- this is not the most flexible approach, but it's good start (maybe a multiplexer is better?)
 
 	b_addr <= std_logic_vector(state);
 
@@ -42,19 +45,19 @@ begin
 	begin
 		wait until rising_edge(clk);
 		-- we always cycle through the addresses
-		-- that results in an update cycle of 4*clockcycle = 80ns,
+		-- that results in an update cycle of 8*clockcycle = 80ns,
 		-- which is much faster than the VMEbus reads/writes
 		state <= state + 1;
 
+		
 		-- precise timing is needed here, and don't get confused who is writing what from where :)
 		-- reading from memory needs waiting one cycle after setting the address, thus previous address is relevant
 		-- writing to memory needs setting the data ahead, thus next address is relevant
-
 		case state is
 			when b"000" =>
 				-- previous address is b"111", next address is b"001"
 				-- just pull down wr again
-				b_wr  <= '0';
+				b_wr <= '0';
 
 			when b"001" =>
 				-- previous address is b"000", next address is b"010"
@@ -70,9 +73,9 @@ begin
 
 			when b"011" =>
 				-- previous address is b"010", next address is b"100"
-				-- latch now the 32bit words from the eventid, since they might change
+				-- latch now the 32bit words from the eventid receiver, since they might change
 				-- during the next four states, thus we write the latched data into the RAM
-				debug_reg         <= DEBUG_IN;
+				status_reg        <= STATUS_IN;
 				eventid_upper_reg <= EVENTID_IN(31 downto 16); -- only upper half is needed 
 				-- write lower eventid now (next address is b"100")
 				b_wr              <= '1';
@@ -80,23 +83,35 @@ begin
 
 			when b"100" =>
 				-- previous address is b"011", next address is b"101"
-				-- output NIM from memory
-				O_NIM <= b_dout(3 downto 0);
+				-- output NIM from memory,
+				-- but lowest bit is stored in signal [directly connected to O_NIM(1)]
+				O_NIM(4 downto 2) <= b_dout(3 downto 1);
+				ack_sig <= b_dout(0);
 				-- write upper eventid
 				b_wr  <= '1';
 				b_din <= eventid_upper_reg;
 
 			when b"101" =>
 				-- previous address is b"100", next address is b"110"
-				-- write lower debug word
-				b_wr  <= '1';
-				b_din <= debug_reg(15 downto 0);
+				-- write lower status word
+				b_wr               <= '1';
+				b_din(14 downto 0) <= x"0" & status_reg(10 downto 0);
+				-- use the upper bit b_din(15) as a edge detection on irq signal
+				irq <= I_NIM(1);
+				irq_prev <= irq;
+				if irq = '1' and irq_prev = '0' then
+						-- with 80ns period, a rising edge detected
+						b_din(15) <= '1';
+				elsif ack_sig = '1' then
+						-- ack sent, clear the trigger signal
+						b_din(15) <= '0'; 
+				end if;
 
 			when b"110" =>
 				-- previous address is b"101", next address is b"111"  
-				-- write upper debug word
+				-- write upper status word (unused at the moment)
 				b_wr  <= '1';
-				b_din <= debug_reg(31 downto 16);
+				b_din <= x"0000";       --status_reg(31 downto 16);
 
 			when b"111" =>
 				-- previous address is b"110", next address is b"000"

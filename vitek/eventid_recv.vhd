@@ -15,7 +15,7 @@ entity eventid_recv is
 		-- the external trigger id is sent on SERIAL_IN
 
 		EVENTID_OUT  : out std_logic_vector(31 downto 0); 
-		DEBUG_OUT    : out std_logic_vector(31 downto 0)
+		STATUS_OUT    : out std_logic_vector(10 downto 0)
 	);
 end entity;
 
@@ -156,7 +156,7 @@ begin
 		end if;
 	end process;
 
-	DEBUG_OUT <= x"00000" & b"0" & std_logic_vector(to_unsigned(bitcnt, 6)) & data_status_reg; 
+	STATUS_OUT <= std_logic_vector(to_unsigned(bitcnt, 6)) & data_status_reg; 
 	EVENTID_OUT <= data_eventid_reg;
 
 end architecture;
