@@ -163,7 +163,7 @@ package body helpers_std is
 	begin
 		temp := (others => '0');
 		for i in input'range loop
-			temp := temp + unsigned(input(i));
+			temp := temp + unsigned(input(i downto i));
 		end loop;
 		return to_integer(temp);
 	end function count_ones;

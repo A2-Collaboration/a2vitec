@@ -155,7 +155,7 @@ begin
 		end if;
 	end process;
 
-	DEBUG_OUT <= x"00000" & std_logic_vector(to_unsigned(bitcnt, 6)) & data_status_reg; 
+	DEBUG_OUT <= x"00000" & b"0" & std_logic_vector(to_unsigned(bitcnt, 6)) & data_status_reg; 
 	EVENTID_OUT <= data_eventid_reg;
 
 end architecture;

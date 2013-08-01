@@ -6,7 +6,7 @@ entity vitek_fpga_xc3s1000 is
 	port(
 		-- signals local to the micromodule itself
 		-- this is the 60 MHz clock input (selected via UTMI_databus16_8)
-		CLK60_IN           : in    std_logic;
+		CLK60_IN         : in    std_logic;
 		UTMI_databus16_8 : out   std_logic; -- 1 = 30MHz, 0 = 60MHz
 		UTMI_reset       : out   std_logic;
 		UTMI_xcvrselect  : out   std_logic;
@@ -53,9 +53,9 @@ architecture arch1 of vitek_fpga_xc3s1000 is
 			   CLK100_OUT : out std_logic;
 			   CLK60_OUT  : out std_logic);
 	end component dcm_60to100;
-	
+
 	-- VME CPLD handling
-	constant vme_addr_size : integer := 3; -- 2^3=8 vme registers maximum (currently)
+	constant vme_addr_size : integer := 4; -- 2^4=16 vme registers maximum (currently)
 	component vme_cpld_handler
 		generic(vme_addr_size : integer);
 		port(clk     : in    std_logic;
@@ -70,11 +70,48 @@ architecture arch1 of vitek_fpga_xc3s1000 is
 			   b_dout  : out   std_logic_vector(15 downto 0));
 	end component vme_cpld_handler;
 
-	-- NIM/ECL input/output
-	signal nimecl_wr               : std_logic;
-	signal nimecl_addr             : std_logic_vector(vme_addr_size downto 1) := (others => '0');
-	signal nimecl_state            : unsigned(1 downto 0)                     := (others => '0');
-	signal nimecl_din, nimecl_dout : std_logic_vector(15 downto 0);
+	-- ram updater writes and reads port b
+	component ram_updater
+		port(clk        : in  std_logic;
+			   O_NIM      : out std_logic_vector(4 downto 1);
+			   I_NIM      : in  std_logic_vector(4 downto 1);
+			   EO         : out std_logic_vector(16 downto 1);
+			   EI         : in  std_logic_vector(16 downto 1);
+			   b_wr       : out std_logic;
+			   b_addr     : out std_logic_vector(2 downto 0);
+			   b_din      : out std_logic_vector(15 downto 0);
+			   b_dout     : in  std_logic_vector(15 downto 0);
+			   EVENTID_IN : in std_logic_vector(31 downto 0);
+			   DEBUG_IN   : in std_logic_vector(31 downto 0));
+	end component ram_updater;
+
+	-- eventid receiver
+	component eventid_recv
+		port(CLK               : in  std_logic;
+			   TIMER_TICK_1US_IN : in  std_logic;
+			   SERIAL_IN         : in  std_logic;
+			   EXT_TRG_IN        : in  std_logic;
+			   EVENTID_OUT       : out std_logic_vector(31 downto 0);
+			   DEBUG_OUT         : out std_logic_vector(31 downto 0));
+	end component eventid_recv;
+
+	-- generate 1us ticks, can also be useful somewhere else
+	component timer_ticks
+		generic(ticks : integer);
+		port(clk  : in  std_logic;
+			   tick : out std_logic);
+	end component timer_ticks;
+
+	-- port b connections for ram_updater
+	signal b_wr          : std_logic;
+	signal b_addr        : std_logic_vector(vme_addr_size downto 1) := (others => '0');
+	signal b_din, b_dout : std_logic_vector(15 downto 0);
+
+	-- event id receiver 
+	signal EVENTID        : std_logic_vector(31 downto 0);
+	signal DEBUG          : std_logic_vector(31 downto 0);
+	signal timer_tick_1us : std_logic;
+
 begin
 
 	-- Configure USB chip on micromodule (UTMI USB3250), 
@@ -106,9 +143,12 @@ begin
 		port map(CLK60_IN   => CLK60_IN,
 			       CLK100_OUT => CLK100,
 			       CLK60_OUT  => CLK60);
+	-- we drive everything at 100MHz at the moment
+	-- pay attention to the eventid receiver and the timer ticks,
+	-- which rely on 100MHz as the clk
 	clk <= clk100;
-	
-	-- port b can be used to handle the VME data transparently (see below!)
+
+	-- port b can be used to handle the VME data transparently (see ram_updater entity)
 	vme_cpld_handler_1 : component vme_cpld_handler
 		generic map(vme_addr_size => vme_addr_size)
 		port map(clk     => clk,
@@ -117,60 +157,41 @@ begin
 			       C_F_out => C_F_out,
 			       I_A     => I_A,
 			       b_clk   => clk,
-			       b_wr    => nimecl_wr,
-			       b_addr  => nimecl_addr,
-			       b_din   => nimecl_din,
-			       b_dout  => nimecl_dout);
+			       b_wr    => b_wr,
+			       b_addr  => b_addr,
+			       b_din   => b_din,
+			       b_dout  => b_dout);
 
-	-- we simply map the ECL and NIM outputs and inputs into the ram
-	-- we did not combine the NIM outputs since this complicates ensuring 
-	-- the "atomic" VME read/writes
-	-- this is not the most flexible approach, but it's good start
-	-- if there are some scalers to be implemented,
-	-- they should have there own VME access (I guess)
+	-- ram updater stuff
+	-- we do not use the upper half of port b at the moment, 
+	-- thus via port a testing of VME access is possible at those addresses
+	b_addr(4) <= '0'; 
+	ram_updater_1 : component ram_updater
+		port map(clk        => clk,
+			       O_NIM      => O_NIM,
+			       I_NIM      => I_NIM,
+			       EO         => EO,
+			       EI         => EI,
+			       b_wr       => b_wr,
+			       b_addr     => b_addr(3 downto 1),
+			       b_din      => b_din,
+			       b_dout     => b_dout,
+			       EVENTID_IN => EVENTID,
+			       DEBUG_IN   => DEBUG);
 
-	nimecl_addr <= '0' & std_logic_vector(nimecl_state);
+	-- event id receiver including timer tick generation
+	eventid_recv_1 : component eventid_recv
+		port map(CLK               => clk,
+			       TIMER_TICK_1US_IN => timer_tick_1us,
+			       SERIAL_IN         => I_NIM(2), -- second one is serial in
+			       EXT_TRG_IN        => I_NIM(1), -- first nim input is interrupt/trigger
+			       EVENTID_OUT       => EVENTID,
+			       DEBUG_OUT         => DEBUG);
 
-	nimecl_io_1 : process is
-	begin
-		wait until rising_edge(clk);
-		-- we always cycle through the addresses
-		-- that results in an update cycle of 4*clockcycle = 80ns,
-		-- which is much faster than the VMEbus reads/writes
-		nimecl_state <= nimecl_state + 1;
-
-		-- precise timing is needed here, and don't get confused who is writing what from where :)
-		-- reading from memory needs waiting one cycle after setting the address, thus previous address is relevant
-		-- writing to memory needs setting the data ahead, thus next address is relevant
-
-		case nimecl_state is
-			when b"00" =>
-				-- previous address is b"11", next address is b"01"
-				-- output NIM from memory
-				O_NIM     <= nimecl_dout(3 downto 0);
-				nimecl_wr <= '0';
-
-			when b"01" =>
-				-- previous address is b"00", next address is b"10"
-				-- read NIM input into memory
-				nimecl_wr  <= '1';
-				nimecl_din <= x"000" & I_NIM;
-
-			when b"10" =>
-				-- previous address is b"01", next address is b"11"  
-				-- output ECL from memory
-				EO        <= nimecl_dout;
-				nimecl_wr <= '0';
-
-			when b"11" =>
-				-- previous address is b"10", next address is b"00"
-				-- read ECL input into memory
-				nimecl_wr  <= '1';
-				nimecl_din <= EI;
-
-			when others => null;
-		end case;
-	end process nimecl_io_1;
+	timer_ticks_1 : component timer_ticks
+		generic map(ticks => 100)
+		port map(clk  => clk,
+			       tick => timer_tick_1us);
 
 end arch1;
 

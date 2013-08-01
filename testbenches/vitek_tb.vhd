@@ -301,7 +301,7 @@ begin
 		report "Testing write cycle 1" severity note;
 		-- set desired address
 		V_AM    <= b"101001";
-		V_A     <= (3 => '1', 1 => '0', others => '0');
+		V_A     <= (4 => '1', 1 => '0', others => '0');
 		V_LWORD <= '1';
 		V_WRITE <= '0';
 		-- tell the address
@@ -340,7 +340,7 @@ begin
 		report "Testing write cycle 2" severity note;
 		-- set desired address
 		V_AM    <= b"101001";
-		V_A     <= (3 => '1', 1 => '1', others => '0');
+		V_A     <= (4 => '1', 1 => '1', others => '0');
 		V_LWORD <= '1';
 		V_WRITE <= '0';
 		-- tell the address
@@ -404,7 +404,7 @@ begin
 		report "Reading back data 2" severity note;
 		-- set correct address
 		V_AM    <= b"101101";
-		V_A     <= (3 => '1', 1 => '1', others => '0');
+		V_A     <= (4 => '1', 1 => '1', others => '0');
 		V_LWORD <= '1';
 		V_WRITE <= '1';
 		V_D     <= (others => 'Z');
@@ -434,7 +434,7 @@ begin
 		report "Reading back data 1" severity note;
 		-- set correct addressV_AS <= '1';
 		V_AM    <= b"101001";
-		V_A     <= (3 => '1', 1 => '0', others => '0');
+		V_A     <= (4 => '1', 1 => '0', others => '0');
 		V_LWORD <= '1';
 		V_WRITE <= '1';
 		V_D     <= (others => 'Z');
