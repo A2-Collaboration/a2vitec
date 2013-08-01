@@ -26,7 +26,8 @@ entity vitek_fpga_xc3s1000 is
 		OHO_RCLK         : out   std_logic; -- 3x7 segment display
 		OHO_SCLK         : out   std_logic; -- 3x7 segment display
 		OHO_SER          : out   std_logic; -- 3x7 segment display
-		V_V              : out   std_logic_vector(10 downto 1); -- another VITEK card
+		V_V25            : out   std_logic_vector(8 downto 1); -- another VITEK card, CMOS 2.5V bank
+		V_V33            : out   std_logic_vector(10 downto 9); -- another VITEK card CMOS 3.3V bank
 
 		-- delay stuff
 		D_IN             : out   std_logic_vector(5 downto 1); -- to delay input
@@ -48,7 +49,7 @@ end vitek_fpga_xc3s1000;
 architecture arch1 of vitek_fpga_xc3s1000 is
 	-- clock handling
 	signal clk, clk60, clk100 : std_logic;
-	signal dcm_locked : std_logic;	
+	signal dcm_locked         : std_logic;
 	component dcm_60to100
 		port(CLK60_IN   : in  std_logic;
 			   CLK100_OUT : out std_logic;
@@ -133,13 +134,15 @@ begin
 	OHO_RCLK <= '0';                    -- 3x7 segment display
 	OHO_SCLK <= '0';                    -- 3x7 segment display
 	OHO_SER  <= '0';                    -- 3x7 segment display
-	V_V      <= (others => '0');        -- another VITEK card
-	D_IN     <= (others => '0');
-	D_D      <= '0';
-	D_Q      <= '0';
-	D_MS     <= '0';
-	D_LE     <= '0';
-	D_CLK    <= '0';
+	V_V25    <= (others => '0');        -- another VITEK card
+	V_V33    <= (others => '0');        -- another VITEK card
+
+	D_IN  <= (others => '0');
+	D_D   <= '0';
+	D_Q   <= '0';
+	D_MS  <= '0';
+	D_LE  <= '0';
+	D_CLK <= '0';
 
 	dcm_1 : component dcm_60to100
 		port map(CLK60_IN   => CLK60_IN,
