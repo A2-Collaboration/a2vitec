@@ -4,6 +4,7 @@ use ieee.std_logic_1164.all;
 -- this entity "simulates" the VITEK board 
 -- (and also the Trenz micromodule)
 -- it mainly tests the VME bus access
+use work.helpers_std.all;
 
 entity vitek_tb is
 end entity vitek_tb;
@@ -87,6 +88,9 @@ architecture arch1 of vitek_tb is
 
 	constant period_vme : time := 62.5 ns; -- 16MHz clock (from VMEbus)
 	signal V_SYSCLK     : std_logic;
+
+	constant period_serial : time := 80 ns; -- 12.5MHz clock (from VMEbus)
+
 
 	-- CPLD signals
 	signal A_CLK          : std_logic;
@@ -224,6 +228,9 @@ begin
 		constant test_nim_in  : std_logic_vector(3 downto 0)  := x"a";
 		constant test_nim_out : std_logic_vector(3 downto 0)  := x"b";
 		constant test_port    : std_logic_vector(2 downto 0)  := b"101";
+		-- note that over the serial line the least significant bit is sent first!
+		constant test_serial  : std_logic_vector(35 downto 1) := b"1" & bit_reverse(x"deadbeef") & b"11";
+		variable test_serial_real  : std_logic_vector(31 downto 0);
 		variable t0, t1       : time;
 	begin
 		-- after some setup time, set default values
@@ -403,6 +410,7 @@ begin
 		t0 := now;
 		report "Reading back data 2" severity note;
 		-- set correct address
+		V_AS <= '1';
 		V_AM    <= b"101101";
 		V_A     <= (4 => '1', 1 => '1', others => '0');
 		V_LWORD <= '1';
@@ -432,7 +440,8 @@ begin
 		-- Reading back the previously written data 1
 		t0 := now;
 		report "Reading back data 1" severity note;
-		-- set correct addressV_AS <= '1';
+		-- set correct address
+		V_AS <= '1';
 		V_AM    <= b"101001";
 		V_A     <= (4 => '1', 1 => '0', others => '0');
 		V_LWORD <= '1';
@@ -635,6 +644,102 @@ begin
 		V_AS <= '1';
 		-- check received data
 		assert V_D(3 downto 1) = test_port report "##### PORT read failed" severity error;
+		-- acknowledge the data
+		V_DS <= (others => '1');
+		-- and wait for slave to release the data lines
+		wait until V_DTACK = '1';
+		-- wait a bit longer
+		t1 := now - t0;
+		report "Done, took " & time'image(t1) severity note;
+		wait for 500 ns;
+
+		--------------------------------------
+		-- Test the trigger/interrupt and the serial ID receiver
+		-- send the interrupt
+		t0 := now;
+		report "Sending an interrupt" severity note;
+		I_NIM <= (others => '0');
+		wait for 50 ns;
+		I_NIM(1) <= '1';
+		wait for 200 ns;
+		I_NIM(1) <= '0';
+		wait for 1 us;
+		-- wait a bit longer
+		t1 := now - t0;
+		report "Done, took " & time'image(t1) severity note;
+		wait for 500 ns;
+		
+		--------------------------------------
+		-- Test the trigger/interrupt and the serial ID receiver
+		-- send the id
+		t0 := now;
+		test_serial_real := bit_reverse(test_serial(34 downto 3));
+		report "Sending the serial ID 0x" & slv2hex(test_serial_real) & " (LSB first)" severity note;
+		wait for 50 ns;
+		
+		for i in test_serial'range loop
+			I_NIM(2) <= test_serial(i);
+			wait for period_serial;
+		end loop;
+		I_NIM(2) <= '0';
+		-- wait a bit longer
+		t1 := now - t0;
+		report "Done, took " & time'image(t1) severity note;
+		wait for 500 ns;
+		
+		-------------------------------------------
+		-- Reading the serial id over VME (lower)
+		t0 := now;
+		report "Reading serial ID over VME (lower)" severity note;
+		-- set correct address
+		V_AS <= '1';
+		V_AM    <= b"101001";
+		V_A     <= (3 => '1', 2 => '0', 1 => '0', others => '0');
+		V_LWORD <= '1';
+		V_WRITE <= '1';
+		V_D     <= (others => 'Z');
+		wait for 30 ns;
+		-- assert address strobe to tell the address
+		V_AS <= '0';
+		-- assert data strobe to request the data
+		V_DS <= (others => '0');
+		-- wait until data is present
+		wait until V_DTACK = '0';
+		-- immediately negate address strobe
+		V_AS <= '1';
+		-- check received data
+		assert V_D = test_serial_real(15 downto 0) report "##### Lower word of serial ID is incorrect" severity error;
+		-- acknowledge the data
+		V_DS <= (others => '1');
+		-- and wait for slave to release the data lines
+		wait until V_DTACK = '1';
+		-- wait a bit longer
+		t1 := now - t0;
+		report "Done, took " & time'image(t1) severity note;
+		wait for 500 ns;
+
+		-------------------------------------------
+		-- Reading the serial id over VME (upper)
+		t0 := now;
+		report "Reading serial ID over VME (upper)" severity note;
+		-- set correct address
+		V_AS <= '1';
+		V_AM    <= b"101001";
+		V_A     <= (3 => '1', 2 => '0', 1 => '1', others => '0');
+		V_LWORD <= '1';
+		V_WRITE <= '1';
+		V_D     <= (others => 'Z');
+		wait for 30 ns;
+		-- assert address strobe to tell the address
+		V_AS <= '0';
+		-- assert data strobe to request the data
+		V_DS <= (others => '0');
+		-- wait until data is present
+		wait until V_DTACK = '0';
+		-- immediately negate address strobe
+		V_AS <= '1';
+		-- check received data
+		assert V_D = test_serial_real(31 downto 16) report "##### Upper word of serial ID is incorrect" severity error;
 		-- acknowledge the data
 		V_DS <= (others => '1');
 		-- and wait for slave to release the data lines

@@ -57,6 +57,7 @@ begin
 
 	timer_tick_1us <= TIMER_TICK_1US_IN;
 
+	trg_sync <= EXT_TRG_IN when rising_edge(CLK);
 	trg_sync_old   <= trg_sync when rising_edge(CLK);
 	reg_SERIAL_IN  <= SERIAL_IN when rising_edge(CLK);
 

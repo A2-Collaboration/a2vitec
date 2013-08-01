@@ -4,6 +4,8 @@
 library ieee;
 USE ieee.std_logic_1164.ALL;
 use ieee.numeric_std.all;
+use ieee.std_logic_textio.all;
+use std.textio.all;
 
 package helpers_std is
 
@@ -21,6 +23,10 @@ package helpers_std is
 
 	function Log2(input : integer) return integer;
 	function count_ones(input : std_logic_vector) return integer;
+
+	function bit_reverse(a : in std_logic_vector) return std_logic_vector;
+
+	function slv2hex(hex_in : std_logic_vector) return string;
 
 end package helpers_std;
 
@@ -168,5 +174,25 @@ package body helpers_std is
 		return to_integer(temp);
 	end function count_ones;
 
+	function bit_reverse(a : in std_logic_vector) return std_logic_vector is
+		variable result : std_logic_vector(a'RANGE);
+		alias aa        : std_logic_vector(a'REVERSE_RANGE) is a;
+	begin
+		for i in aa'RANGE loop
+			result(i) := aa(i);
+		end loop;
+		return result;
+	end;                                 
+
+
+	function slv2hex(
+		hex_in : std_logic_vector) return string is
+		variable textline   : line;
+		variable tmp_string : string(1 to hex_in'length / 4);
+	begin                               -- function slv2hex
+		hwrite(textline, hex_in);
+		read(textline, tmp_string);
+		return (tmp_string);
+	end function slv2hex;
 end package body helpers_std;
 
