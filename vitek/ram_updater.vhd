@@ -27,14 +27,14 @@ architecture RTL of ram_updater is
 	signal state : unsigned(2 downto 0) := (others => '0');
 
 	-- signals needed to handle the IRQ/ACK signals
-	signal eventid_upper_reg : std_logic_vector(31 downto 16);
-	signal status_reg        : std_logic_vector(10 downto 0);
-	signal ack_sig, irq, irq_prev          : std_logic;
+	signal eventid_upper_reg       : std_logic_vector(31 downto 16);
+	signal status_reg              : std_logic_vector(10 downto 0);
+	signal ack_sig                 : std_logic;
+	signal irq, irq_prev, irq_edge : std_logic := '0';
 begin
 	-- ack signal used to buffer its state in the ram
 	O_NIM(1) <= ack_sig;
-	
-	
+
 	-- we did not combine the NIM outputs since this complicates ensuring 
 	-- the "atomic" VME read/writes
 	-- this is not the most flexible approach, but it's good start (maybe a multiplexer is better?)
@@ -49,7 +49,6 @@ begin
 		-- which is much faster than the VMEbus reads/writes
 		state <= state + 1;
 
-		
 		-- precise timing is needed here, and don't get confused who is writing what from where :)
 		-- reading from memory needs waiting one cycle after setting the address, thus previous address is relevant
 		-- writing to memory needs setting the data ahead, thus next address is relevant
@@ -86,25 +85,25 @@ begin
 				-- output NIM from memory,
 				-- but lowest bit is stored in signal [directly connected to O_NIM(1)]
 				O_NIM(4 downto 2) <= b_dout(3 downto 1);
-				ack_sig <= b_dout(0);
+				ack_sig           <= b_dout(0);
 				-- write upper eventid
-				b_wr  <= '1';
-				b_din <= eventid_upper_reg;
+				b_wr              <= '1';
+				b_din             <= eventid_upper_reg;
 
 			when b"101" =>
 				-- previous address is b"100", next address is b"110"
 				-- write lower status word
 				b_wr               <= '1';
-				b_din(14 downto 0) <= x"0" & status_reg(10 downto 0);
+				b_din <= irq_edge & x"0" & status_reg(10 downto 0);
 				-- use the upper bit b_din(15) as a edge detection on irq signal
-				irq <= I_NIM(1);
-				irq_prev <= irq;
+				irq                <= I_NIM(1);
+				irq_prev           <= irq;
 				if irq = '1' and irq_prev = '0' then
-						-- with 80ns period, a rising edge detected
-						b_din(15) <= '1';
+					-- with 80ns period, a rising edge detected
+					irq_edge <= '1';
 				elsif ack_sig = '1' then
-						-- ack sent, clear the trigger signal
-						b_din(15) <= '0'; 
+					-- ack sent, clear the trigger signal
+					irq_edge <= '0';
 				end if;
 
 			when b"110" =>

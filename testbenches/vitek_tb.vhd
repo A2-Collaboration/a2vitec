@@ -226,10 +226,10 @@ begin
 		constant test_ecl_in  : std_logic_vector(15 downto 0) := x"abcd";
 		constant test_ecl_out : std_logic_vector(15 downto 0) := x"dcba";
 		constant test_nim_in  : std_logic_vector(3 downto 0)  := x"a";
-		constant test_nim_out : std_logic_vector(3 downto 0)  := x"b";
+		constant test_nim_out : std_logic_vector(3 downto 0)  := x"c"; -- should be even to keep ack = O_NIM(1) low
 		constant test_port    : std_logic_vector(2 downto 0)  := b"101";
 		-- note that over the serial line the least significant bit is sent first!
-		constant test_serial  : std_logic_vector(35 downto 1) := b"1" & bit_reverse(x"deadbeef") & b"11";
+		constant test_serial  : std_logic_vector(35 downto 1) := b"1" & bit_reverse(x"deadbeef") & b"01";
 		variable test_serial_real  : std_logic_vector(31 downto 0);
 		variable t0, t1       : time;
 	begin
@@ -661,9 +661,40 @@ begin
 		I_NIM <= (others => '0');
 		wait for 50 ns;
 		I_NIM(1) <= '1';
-		wait for 200 ns;
+		wait for 200 ns; -- interrupt must be at least 80ns high
 		I_NIM(1) <= '0';
 		wait for 1 us;
+		-- wait a bit longer
+		t1 := now - t0;
+		report "Done, took " & time'image(t1) severity note;
+		wait for 500 ns;
+		
+		-------------------------------------------
+		-- Checking the trigger (read status register)
+		t0 := now;
+		report "Checking the interrupt" severity note;
+		-- set correct address
+		V_AS <= '1';
+		V_AM    <= b"101001";
+		V_A     <= (3 => '1', 2 => '1', 1 => '0', others => '0');
+		V_LWORD <= '1';
+		V_WRITE <= '1';
+		V_D     <= (others => 'Z');
+		wait for 30 ns;
+		-- assert address strobe to tell the address
+		V_AS <= '0';
+		-- assert data strobe to request the data
+		V_DS <= (others => '0');
+		-- wait until data is present
+		wait until V_DTACK = '0';
+		-- immediately negate address strobe
+		V_AS <= '1';
+		-- check received data
+		assert V_D(15) = '1' report "##### Interrupt was not received" severity error;
+		-- acknowledge the data
+		V_DS <= (others => '1');
+		-- and wait for slave to release the data lines
+		wait until V_DTACK = '1';
 		-- wait a bit longer
 		t1 := now - t0;
 		report "Done, took " & time'image(t1) severity note;
@@ -748,6 +779,97 @@ begin
 		t1 := now - t0;
 		report "Done, took " & time'image(t1) severity note;
 		wait for 500 ns;
+
+		--------------------------------------
+		-- Send ACK signal strobe (readout of other modules finished)
+		-- over NIM high and then down again
+		t0 := now;
+		report "Send ACK signal strobe to O_NIM(1)" severity note;
+		-- set desired address 
+		V_AM    <= b"101001";
+		V_A     <= (2 => '1', 1 => '1', others => '0');
+		V_LWORD <= '1';
+		V_WRITE <= '0';
+		-- tell the address
+		wait for 30 ns;
+		V_AS <= '0';
+		-- set the data
+		V_D  <= x"000" & b"0001";
+		wait for 30 ns;
+		V_DS <= (others => '0');
+		-- wait for data ack
+		wait until V_DTACK = '0';
+		-- acknowledge the transfer
+		V_AS <= '1';
+		V_DS <= (others => '1');
+		wait until V_DTACK = '1';
+		-- see if it's at the output
+		assert O_NIM = b"0001" report "##### Could not set NIM output to high" severity error;
+		wait for 100 ns;
+		-- now set it to low again
+		-- set desired address 
+		V_AM    <= b"101001";
+		V_A     <= (2 => '1', 1 => '1', others => '0');
+		V_LWORD <= '1';
+		V_WRITE <= '0';
+		-- tell the address
+		wait for 30 ns;
+		V_AS <= '0';
+		-- set the data
+		V_D  <= x"000" & b"0000";
+		wait for 30 ns;
+		V_DS <= (others => '0');
+		-- wait for data ack
+		wait until V_DTACK = '0';
+		-- acknowledge the transfer
+		V_AS <= '1';
+		V_DS <= (others => '1');
+		wait until V_DTACK = '1';
+		-- see if it's at the output
+		assert O_NIM = b"0000" report "##### Could not set NIM output to low" severity error;
+		-- wait a bit longer
+		t1 := now - t0;
+		report "Done, took " & time'image(t1) severity note;
+		wait for 500 ns;
+		
+		-------------------------------------------
+		-- Checking the event ID status (read status register)
+		t0 := now;
+		report "Checking the Event ID status" severity note;
+		-- set correct address
+		V_AS <= '1';
+		V_AM    <= b"101001";
+		V_A     <= (3 => '1', 2 => '1', 1 => '0', others => '0');
+		V_LWORD <= '1';
+		V_WRITE <= '1';
+		V_D     <= (others => 'Z');
+		wait for 30 ns;
+		-- assert address strobe to tell the address
+		V_AS <= '0';
+		-- assert data strobe to request the data
+		V_DS <= (others => '0');
+		-- wait until data is present
+		wait until V_DTACK = '0';
+		-- immediately negate address strobe
+		V_AS <= '1';
+		-- check received data
+		assert V_D(15) = '0' report "##### Interrupt was not reset by ACK" severity error;
+		-- no timeout, start/stop bit there, parity ok, no error flag
+		assert V_D(4 downto 0) = b"01010" report "##### Event ID status not as expected (parity wrong?)" severity error;
+		report "Got the following: " & slv2hex(V_D) severity note;
+		-- acknowledge the data
+		V_DS <= (others => '1');
+		-- and wait for slave to release the data lines
+		wait until V_DTACK = '1';
+		-- wait a bit longer
+		t1 := now - t0;
+		report "Done, took " & time'image(t1) severity note;
+		wait for 500 ns;
+		
+		
+		
+		
+		
 
 		--------------------------------------
 		-- write something else on the bus

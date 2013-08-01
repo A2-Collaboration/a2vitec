@@ -36,7 +36,7 @@ architecture arch1 of eventid_recv is
 	signal timeoutcnt       : integer range 0 to timeoutcnt_Max := timeoutcnt_Max;
 	signal timer_tick_1us   : std_logic;
 
-	signal shift_reg : std_logic_vector(34 downto 0);
+	signal shift_reg : std_logic_vector(34 downto 0) := (others => '0');
 	signal bitcnt    : integer range 0 to shift_reg'length;
 
 	signal reg_SERIAL_IN : std_logic;
