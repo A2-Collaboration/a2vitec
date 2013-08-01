@@ -23,6 +23,7 @@
 
 library ieee;
 use ieee.std_logic_1164.ALL;
+use ieee.numeric_std.all;
 
 library UNISIM;
 use UNISIM.Vcomponents.ALL;
@@ -31,29 +32,52 @@ use UNISIM.Vcomponents.ALL;
 entity dcm_60to100 is
 	port(CLK60_IN   : in  std_logic;
 		   CLK100_OUT : out std_logic;
-		   CLK60_OUT  : out std_logic);
+		   CLK60_OUT  : out std_logic;
+		   LOCKED_OUT : out std_logic);
 end dcm_60to100;
 
 architecture BEHAVIORAL of dcm_60to100 is
 	signal CLKFB_IN    : std_logic;
 	signal CLKFX_BUF   : std_logic;
-	signal CLKIN_IBUFG : std_logic;
+	signal CLK60_IBUFG : std_logic;
 	signal CLK0_BUF    : std_logic;
-	signal GND_BIT     : std_logic;
+	signal LOCKED      : std_logic;
+	signal RST         : std_logic            := '1';
 begin
-	GND_BIT   <= '0';
-	CLK60_OUT <= CLKFB_IN;
-	CLKFX_BUFG_INST : BUFG
-		port map(I => CLKFX_BUF,
-			       O => CLK100_OUT);
+	LOCKED_OUT <= LOCKED;
+	
+	CLK60_BUFG_INST : BUFGCE
+		port map(I  => CLK0_BUF,
+			       O  => CLK60_OUT,
+			       CE => LOCKED);
+	
+	CLKFX_BUFG_INST : BUFGCE
+		port map(I  => CLKFX_BUF,
+			       O  => CLK100_OUT,
+			       CE => LOCKED);
 
 	CLKIN_IBUFG_INST : IBUFG
 		port map(I => CLK60_IN,
-			       O => CLKIN_IBUFG);
+			       O => CLK60_IBUFG);
+
 
 	CLK0_BUFG_INST : BUFG
-		port map(I => CLK0_BUF,
-			       O => CLKFB_IN);
+		port map(I  => CLK0_BUF,
+			       O  => CLKFB_IN);
+			       
+	SRL16_INST : SRL16 
+	generic map(
+		INIT => x"FFFF"
+	)
+	port map(
+		Q   => RST,
+		A0  => '1',
+		A1  => '1',
+		A2  => '1',
+		A3  => '1',
+		CLK => CLK60_IBUFG,
+		D   => '0'
+	);
 
 	DCM_INST : DCM
 		generic map(CLK_FEEDBACK          => "1X",
@@ -69,14 +93,14 @@ begin
 			          DUTY_CYCLE_CORRECTION => TRUE,
 			          FACTORY_JF            => x"8080",
 			          PHASE_SHIFT           => 0,
-			          STARTUP_WAIT          => FALSE)
+			          STARTUP_WAIT          => TRUE)
 		port map(CLKFB    => CLKFB_IN,
-			       CLKIN    => CLKIN_IBUFG,
-			       DSSEN    => GND_BIT,
-			       PSCLK    => GND_BIT,
-			       PSEN     => GND_BIT,
-			       PSINCDEC => GND_BIT,
-			       RST      => GND_BIT,
+			       CLKIN    => CLK60_IBUFG,
+			       DSSEN    => '0',
+			       PSCLK    => '0',
+			       PSEN     => '0',
+			       PSINCDEC => '0',
+			       RST      => RST,
 			       CLKDV    => open,
 			       CLKFX    => CLKFX_BUF,
 			       CLKFX180 => open,
@@ -86,8 +110,10 @@ begin
 			       CLK90    => open,
 			       CLK180   => open,
 			       CLK270   => open,
-			       LOCKED   => open,
+			       LOCKED   => LOCKED,
 			       PSDONE   => open,
 			       STATUS   => open);
+
+
 
 end BEHAVIORAL;

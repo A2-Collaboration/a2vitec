@@ -48,10 +48,12 @@ end vitek_fpga_xc3s1000;
 architecture arch1 of vitek_fpga_xc3s1000 is
 	-- clock handling
 	signal clk, clk60, clk100 : std_logic;
+	signal dcm_locked : std_logic;	
 	component dcm_60to100
 		port(CLK60_IN   : in  std_logic;
 			   CLK100_OUT : out std_logic;
-			   CLK60_OUT  : out std_logic);
+			   CLK60_OUT  : out std_logic;
+			   LOCKED_OUT : out std_logic);
 	end component dcm_60to100;
 
 	-- VME CPLD handling
@@ -123,8 +125,8 @@ begin
 	UTMI_opmode1     <= '0';
 	UTMI_txvalid     <= '0';
 
-	-- turn off the LED (active low)
-	LED_module <= '1';
+	-- use LED to show locked status (but actice low, so it's off when it's ok)
+	LED_module <= dcm_locked;
 
 	-- currently unused outputs
 	A_X      <= (others => '0');        -- AVR microprocessor
@@ -141,8 +143,9 @@ begin
 
 	dcm_1 : component dcm_60to100
 		port map(CLK60_IN   => CLK60_IN,
-			       CLK100_OUT => CLK100,
-			       CLK60_OUT  => CLK60);
+			       CLK100_OUT => clk100,
+			       CLK60_OUT  => clk60,
+			       LOCKED_OUT => dcm_locked);
 	-- we drive everything at 100MHz at the moment
 	-- pay attention to the eventid receiver and the timer ticks,
 	-- which rely on 100MHz as the clk
