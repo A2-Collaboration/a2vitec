@@ -126,8 +126,8 @@ begin
 	UTMI_opmode1     <= '0';
 	UTMI_txvalid     <= '0';
 
-	-- use LED to show locked status (but actice low, so it's off when it's ok)
-	LED_module <= dcm_locked;
+	-- use LED to show locked status (but actice low, so it's on when it's ok)
+	LED_module <= not dcm_locked;
 
 	-- currently unused outputs
 	A_X      <= (others => '0');        -- AVR microprocessor
