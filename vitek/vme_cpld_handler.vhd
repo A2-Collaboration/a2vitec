@@ -17,7 +17,8 @@ entity vme_cpld_handler is
 		b_wr    : in    std_logic;
 		b_addr  : in    std_logic_vector(vme_addr_size - 1 downto 0);
 		b_din   : in    std_logic_vector(15 downto 0);
-		b_dout  : out   std_logic_vector(15 downto 0)
+		b_dout  : out   std_logic_vector(15 downto 0);
+		debug : out std_logic_vector(16 downto 1)
 	);
 end entity vme_cpld_handler;
 

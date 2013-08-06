@@ -70,7 +70,9 @@ architecture arch1 of vitek_fpga_xc3s1000 is
 			   b_wr    : in    std_logic;
 			   b_addr  : in    std_logic_vector(vme_addr_size - 1 downto 0);
 			   b_din   : in    std_logic_vector(15 downto 0);
-			   b_dout  : out   std_logic_vector(15 downto 0));
+			   b_dout  : out   std_logic_vector(15 downto 0);
+			   debug  : out   std_logic_vector(16 downto 1)
+			   );
 	end component vme_cpld_handler;
 
 	-- ram updater writes and reads port b
@@ -111,9 +113,11 @@ architecture arch1 of vitek_fpga_xc3s1000 is
 	signal b_din, b_dout : std_logic_vector(15 downto 0);
 
 	-- event id receiver 
-	signal eventid        : std_logic_vector(31 downto 0);
-	signal eventid_status : std_logic_vector(10 downto 0);
-	signal timer_tick_1us : std_logic;
+--	signal eventid        : std_logic_vector(31 downto 0);
+--	signal eventid_status : std_logic_vector(10 downto 0);
+--	signal timer_tick_1us : std_logic;
+
+	signal debug : std_logic_vector(16 downto 1);
 
 begin
 
@@ -166,38 +170,43 @@ begin
 			       b_wr    => b_wr,
 			       b_addr  => b_addr,
 			       b_din   => b_din,
-			       b_dout  => b_dout);
+			       b_dout  => b_dout,
+			       debug => open);
 
-	-- ram updater stuff
-	-- we do not use the upper half of port b at the moment, 
-	-- thus via port a testing of VME access is possible at those addresses
-	b_addr(4) <= '0';
-	ram_updater_1 : component ram_updater
-		port map(clk        => clk,
-			       O_NIM      => O_NIM,
-			       I_NIM      => I_NIM,
-			       EO         => EO,
-			       EI         => EI,
-			       b_wr       => b_wr,
-			       b_addr     => b_addr(3 downto 1),
-			       b_din      => b_din,
-			       b_dout     => b_dout,
-			       EVENTID_IN => eventid,
-			       STATUS_IN  => eventid_status);
+	debug <= not debug when rising_edge(clk);
+	EO <= debug;
+	O_NIM <= (others => '0');
 
-	-- event id receiver including timer tick generation
-	eventid_recv_1 : component eventid_recv
-		port map(CLK               => clk,
-			       TIMER_TICK_1US_IN => timer_tick_1us,
-			       SERIAL_IN         => I_NIM(2), -- second one is serial in
-			       EXT_TRG_IN        => I_NIM(1), -- first nim input is interrupt/trigger
-			       EVENTID_OUT       => eventid,
-			       STATUS_OUT        => eventid_status);
-
-	timer_ticks_1 : component timer_ticks
-		generic map(ticks => 100)
-		port map(clk  => clk,
-			       tick => timer_tick_1us);
+--	-- ram updater stuff
+--	-- we do not use the upper half of port b at the moment, 
+--	-- thus via port a testing of VME access is possible at those addresses
+--	b_addr(4) <= '0';
+--	ram_updater_1 : component ram_updater
+--		port map(clk        => clk,
+--			       O_NIM      => O_NIM,
+--			       I_NIM      => I_NIM,
+--			       EO         => EO,
+--			       EI         => EI,
+--			       b_wr       => b_wr,
+--			       b_addr     => b_addr(3 downto 1),
+--			       b_din      => b_din,
+--			       b_dout     => b_dout,
+--			       EVENTID_IN => eventid,
+--			       STATUS_IN  => eventid_status);
+--
+--	-- event id receiver including timer tick generation
+--	eventid_recv_1 : component eventid_recv
+--		port map(CLK               => clk,
+--			       TIMER_TICK_1US_IN => timer_tick_1us,
+--			       SERIAL_IN         => I_NIM(2), -- second one is serial in
+--			       EXT_TRG_IN        => I_NIM(1), -- first nim input is interrupt/trigger
+--			       EVENTID_OUT       => eventid,
+--			       STATUS_OUT        => eventid_status);
+--
+--	timer_ticks_1 : component timer_ticks
+--		generic map(ticks => 100)
+--		port map(clk  => clk,
+--			       tick => timer_tick_1us);
 
 end arch1;
 
