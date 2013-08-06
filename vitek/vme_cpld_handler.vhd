@@ -58,8 +58,8 @@ begin
 	begin
 		wait until rising_edge(clk);
 		-- synchronize inputs
-		V_WRITE    <= C_F_out(5);
-		fpga_start <= C_F_out(6);
+		V_WRITE    <= C_F_out(4);
+		fpga_start <= C_F_out(5);
 		vme_addr   <= I_A(vme_addr_size downto 1);
 
 		case vme_state is

@@ -59,8 +59,8 @@ begin
 	fpga_finished_r <= C_F_in(1) when rising_edge(clk);
 
 	C_F_out <= (
-			5      => fpga_write,       -- high if we should output something on databus (read cycle)
-			6      => fpga_start,       -- high if FPGA can start working now
+			4      => fpga_write,       -- high if we should output something on databus (read cycle)
+			5      => fpga_start,       -- high if FPGA can start working now
 			others => '0'               -- others are unused
 		);
 
