@@ -6,8 +6,12 @@ NET "B_OE"  LOC = "P7"  ;
 NET "C_F_in<1>"  LOC = "P8"  ; 
 NET "C_F_in<2>"  LOC = "P12"  ; 
 NET "C_F_in<3>"  LOC = "P13"  ; 
-NET "C_F_out<4>"  LOC = "P14"  ; 
-NET "C_F_out<5>"  LOC = "P16"  ; 
+# C_F<4:5> seem to be swapped, fix
+# that here
+# C_F<6> does not reach the FPGA at all
+# C_F<7> seems to be ok
+NET "C_F_out<4>"  LOC = "P16"  ; # schematic says P14
+NET "C_F_out<5>"  LOC = "P14"  ; # schematic says P16 
 NET "C_F_out<6>"  LOC = "P27"  ;
 NET "C_F_out<7>"  LOC = "P22"  ; 
 NET "DTACK"  LOC = "P40"  ;
