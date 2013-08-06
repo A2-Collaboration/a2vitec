@@ -46,7 +46,8 @@ architecture arch1 of vitek_tb is
 			   OHO_RCLK         : out   std_logic;
 			   OHO_SCLK         : out   std_logic;
 			   OHO_SER          : out   std_logic;
-			   V_V              : out   std_logic_vector(10 downto 1);
+			   V_V25            : out   std_logic_vector(8 downto 1);
+			   V_V33            : out   std_logic_vector(10 downto 9);
 			   D_IN             : out   std_logic_vector(5 downto 1);
 			   D_OUT            : in    std_logic_vector(5 downto 1);
 			   D_D              : out   std_logic;
@@ -174,7 +175,8 @@ begin
 			       OHO_RCLK         => open,
 			       OHO_SCLK         => open,
 			       OHO_SER          => open,
-			       V_V              => open,
+			       V_V25            => open,
+			       V_V33            => open,
 			       D_IN             => open,
 			       D_OUT            => D_OUT,
 			       D_D              => open,
@@ -221,17 +223,17 @@ begin
 
 	-- now work on the VME bus as a master
 	simu : process is
-		constant test_word1   : std_logic_vector(15 downto 0) := x"dead";
-		constant test_word2   : std_logic_vector(15 downto 0) := x"beef";
-		constant test_ecl_in  : std_logic_vector(15 downto 0) := x"abcd";
-		constant test_ecl_out : std_logic_vector(15 downto 0) := x"dcba";
-		constant test_nim_in  : std_logic_vector(3 downto 0)  := x"a";
-		constant test_nim_out : std_logic_vector(3 downto 0)  := x"c"; -- should be even to keep ack = O_NIM(1) low
-		constant test_port    : std_logic_vector(2 downto 0)  := b"101";
+		constant test_word1       : std_logic_vector(15 downto 0) := x"dead";
+		constant test_word2       : std_logic_vector(15 downto 0) := x"beef";
+		constant test_ecl_in      : std_logic_vector(15 downto 0) := x"abcd";
+		constant test_ecl_out     : std_logic_vector(15 downto 0) := x"dcba";
+		constant test_nim_in      : std_logic_vector(3 downto 0)  := x"a";
+		constant test_nim_out     : std_logic_vector(3 downto 0)  := x"c"; -- should be even to keep ack = O_NIM(1) low
+		constant test_port        : std_logic_vector(2 downto 0)  := b"101";
 		-- note that over the serial line the least significant bit is sent first!
-		constant test_serial  : std_logic_vector(35 downto 1) := b"1" & bit_reverse(x"deadbeef") & b"01";
-		variable test_serial_real  : std_logic_vector(31 downto 0);
-		variable t0, t1       : time;
+		constant test_serial      : std_logic_vector(35 downto 1) := b"1" & bit_reverse(x"deadbeef") & b"01";
+		variable test_serial_real : std_logic_vector(31 downto 0);
+		variable t0, t1           : time;
 	begin
 		-- after some setup time, set default values
 		wait for 2 * period_vme + 5 ns;
@@ -410,7 +412,7 @@ begin
 		t0 := now;
 		report "Reading back data 2" severity note;
 		-- set correct address
-		V_AS <= '1';
+		V_AS    <= '1';
 		V_AM    <= b"101101";
 		V_A     <= (4 => '1', 1 => '1', others => '0');
 		V_LWORD <= '1';
@@ -441,7 +443,7 @@ begin
 		t0 := now;
 		report "Reading back data 1" severity note;
 		-- set correct address
-		V_AS <= '1';
+		V_AS    <= '1';
 		V_AM    <= b"101001";
 		V_A     <= (4 => '1', 1 => '0', others => '0');
 		V_LWORD <= '1';
@@ -661,20 +663,20 @@ begin
 		I_NIM <= (others => '0');
 		wait for 50 ns;
 		I_NIM(1) <= '1';
-		wait for 200 ns; -- interrupt must be at least 80ns high
+		wait for 200 ns;                -- interrupt must be at least 80ns high
 		I_NIM(1) <= '0';
 		wait for 1 us;
 		-- wait a bit longer
 		t1 := now - t0;
 		report "Done, took " & time'image(t1) severity note;
 		wait for 500 ns;
-		
+
 		-------------------------------------------
 		-- Checking the trigger (read status register)
 		t0 := now;
 		report "Checking the interrupt" severity note;
 		-- set correct address
-		V_AS <= '1';
+		V_AS    <= '1';
 		V_AM    <= b"101001";
 		V_A     <= (3 => '1', 2 => '1', 1 => '0', others => '0');
 		V_LWORD <= '1';
@@ -699,31 +701,31 @@ begin
 		t1 := now - t0;
 		report "Done, took " & time'image(t1) severity note;
 		wait for 500 ns;
-		
+
 		--------------------------------------
 		-- Test the trigger/interrupt and the serial ID receiver
 		-- send the id
-		t0 := now;
+		t0               := now;
 		test_serial_real := bit_reverse(test_serial(34 downto 3));
 		report "Sending the serial ID 0x" & slv2hex(test_serial_real) & " (LSB first)" severity note;
 		wait for 50 ns;
-		
+
 		for i in test_serial'range loop
 			I_NIM(2) <= test_serial(i);
 			wait for period_serial;
 		end loop;
 		I_NIM(2) <= '0';
 		-- wait a bit longer
-		t1 := now - t0;
+		t1       := now - t0;
 		report "Done, took " & time'image(t1) severity note;
 		wait for 500 ns;
-		
+
 		-------------------------------------------
 		-- Reading the serial id over VME (lower)
 		t0 := now;
 		report "Reading serial ID over VME (lower)" severity note;
 		-- set correct address
-		V_AS <= '1';
+		V_AS    <= '1';
 		V_AM    <= b"101001";
 		V_A     <= (3 => '1', 2 => '0', 1 => '0', others => '0');
 		V_LWORD <= '1';
@@ -754,7 +756,7 @@ begin
 		t0 := now;
 		report "Reading serial ID over VME (upper)" severity note;
 		-- set correct address
-		V_AS <= '1';
+		V_AS    <= '1';
 		V_AM    <= b"101001";
 		V_A     <= (3 => '1', 2 => '0', 1 => '1', others => '0');
 		V_LWORD <= '1';
@@ -831,13 +833,13 @@ begin
 		t1 := now - t0;
 		report "Done, took " & time'image(t1) severity note;
 		wait for 500 ns;
-		
+
 		-------------------------------------------
 		-- Checking the event ID status (read status register)
 		t0 := now;
 		report "Checking the Event ID status" severity note;
 		-- set correct address
-		V_AS <= '1';
+		V_AS    <= '1';
 		V_AM    <= b"101001";
 		V_A     <= (3 => '1', 2 => '1', 1 => '0', others => '0');
 		V_LWORD <= '1';
@@ -865,11 +867,6 @@ begin
 		t1 := now - t0;
 		report "Done, took " & time'image(t1) severity note;
 		wait for 500 ns;
-		
-		
-		
-		
-		
 
 		--------------------------------------
 		-- write something else on the bus
