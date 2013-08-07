@@ -6,6 +6,11 @@
 #
 # The referenced sheets correspond to Trenz schematic "SCH-TE0140-04.pdf",
 # see here: http://www.trenz-electronic.de/fileadmin/docs/Trenz_Electronic/TE0140_series/TE0140/documents/SCH-TE0140-04.pdf
+
+# NOTE the text in the Trenz schematic, since we indeed use the bottom connector.
+# 1) The locations RL2 (reads like R12...) and RL1 are swapped 
+# 2) The locations LR2 and LR1 are swapped
+
 ###############################
 #
 # Signals local to Trenz Module
@@ -32,12 +37,12 @@ NET "LED_module"       LOC = "N6";
 # Bank 2 (Sheet 3/4)
 #
 ####################
-NET "D_OUT[2]" LOC = B16; # RL1
+NET "D_OUT[2]" LOC = D14; # RL2 (swapping with RL1) 
 NET "D_OUT[1]" LOC = C16; # RL4
 NET "D_OUT[3]" LOC = D16; # RL8
 NET "D_OUT[5]" LOC = H16; # RL21
 NET "D_OUT[4]" LOC = G12; # RR16
-NET "O_NIM[4]" LOC = D14; # RL2
+NET "O_NIM[4]" LOC = B16; # RL1 (swapping with RL2)
 NET "O_NIM[3]" LOC = C15; # RL3
 NET "O_NIM[2]" LOC = E13; # RL6
 NET "O_NIM[1]" LOC = D15; # RL7
@@ -121,8 +126,8 @@ NET "F_D[6]"  LOC = N3; # LR39
 #
 ####################
 NET "C_F_in[3]" LOC = C1; # LR4
-NET "C_F_out[4]" LOC = B1; # LR1
-NET "C_F_out[5]" LOC = C3; # LR2
+NET "C_F_out[4]" LOC = C3; # LR2 (swapping with LR2)
+NET "C_F_out[5]" LOC = B1; # LR1 (swapping with LR1)
 NET "C_F_out[6]" LOC = E3; # LR9
 NET "C_F_out[7]" LOC = H1; # LR20
 NET "I_A[1]"  LOC = C2; # LR3
