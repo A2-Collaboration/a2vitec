@@ -29,7 +29,7 @@ architecture RTL of ram_updater is
 	-- signals needed to handle the IRQ/ACK signals
 	signal eventid_upper_reg       : std_logic_vector(31 downto 16);
 	signal status_reg              : std_logic_vector(10 downto 0);
-	signal ack_sig                 : std_logic;
+	signal ack_sig, ack_sig_prev   : std_logic;
 	signal irq, irq_prev, irq_edge : std_logic := '0';
 begin
 	-- ack signal used to buffer its state in the ram
@@ -76,9 +76,21 @@ begin
 				-- during the next four states, thus we write the latched data into the RAM
 				status_reg        <= STATUS_IN;
 				eventid_upper_reg <= EVENTID_IN(31 downto 16); -- only upper half is needed 
+				-- use the upper bit b_din(15) as a edge detection on irq signal
+				irq               <= I_NIM(1);
+				irq_prev          <= irq;
+				ack_sig_prev      <= ack_sig;
+				if irq = '1' and irq_prev = '0' then
+					-- with 80ns period, a rising edge detected
+					irq_edge <= '1';
+				elsif ack_sig_prev = '1' and ack_sig = '0' then
+					-- falling edge on ack (again 80ns period, much faster than VME)
+					-- clean the 
+					irq_edge <= '0';
+				end if;
 				-- write lower eventid now (next address is b"100")
-				b_wr              <= '1';
-				b_din             <= EVENTID_IN(15 downto 0);
+				b_wr  <= '1';
+				b_din <= EVENTID_IN(15 downto 0);
 
 			when b"100" =>
 				-- previous address is b"011", next address is b"101"
@@ -93,18 +105,8 @@ begin
 			when b"101" =>
 				-- previous address is b"100", next address is b"110"
 				-- write lower status word
-				b_wr               <= '1';
+				b_wr  <= '1';
 				b_din <= irq_edge & x"0" & status_reg(10 downto 0);
-				-- use the upper bit b_din(15) as a edge detection on irq signal
-				irq                <= I_NIM(1);
-				irq_prev           <= irq;
-				if irq = '1' and irq_prev = '0' then
-					-- with 80ns period, a rising edge detected
-					irq_edge <= '1';
-				elsif ack_sig = '1' then
-					-- ack sent, clear the trigger signal
-					irq_edge <= '0';
-				end if;
 
 			when b"110" =>
 				-- previous address is b"101", next address is b"111"  

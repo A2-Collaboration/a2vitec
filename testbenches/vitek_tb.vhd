@@ -709,6 +709,36 @@ begin
 		wait for 500 ns;
 
 		--------------------------------------
+		-- Set ACK signal high (readout of other modules started)
+		t0 := now;
+		report "Send ACK signal strobe to O_NIM(1)" severity note;
+		-- set desired address 
+		V_AM    <= b"101001";
+		V_A     <= (2 => '1', 1 => '1', others => '0');
+		V_LWORD <= '1';
+		V_WRITE <= '0';
+		-- tell the address
+		wait for 30 ns;
+		V_AS <= '0';
+		-- set the data
+		V_D  <= x"000" & b"0001";
+		wait for 30 ns;
+		V_DS <= (others => '0');
+		-- wait for data ack
+		wait until V_DTACK = '0';
+		-- acknowledge the transfer
+		V_AS <= '1';
+		V_DS <= (others => '1');
+		wait until V_DTACK = '1';
+		-- see if it's at the output
+		assert O_NIM = b"0001" report "##### Could not set NIM output to high" severity error;
+		-- wait a bit longer
+		t1       := now - t0;
+		report "Done, took " & time'image(t1) severity note;
+		wait for 500 ns;
+		
+
+		--------------------------------------
 		-- Test the trigger/interrupt and the serial ID receiver
 		-- send the id
 		t0               := now;
@@ -789,33 +819,9 @@ begin
 		wait for 500 ns;
 
 		--------------------------------------
-		-- Send ACK signal strobe (readout of other modules finished)
-		-- over NIM high and then down again
+		-- Set ACK signal low (readout of other modules finished)
 		t0 := now;
-		report "Send ACK signal strobe to O_NIM(1)" severity note;
-		-- set desired address 
-		V_AM    <= b"101001";
-		V_A     <= (2 => '1', 1 => '1', others => '0');
-		V_LWORD <= '1';
-		V_WRITE <= '0';
-		-- tell the address
-		wait for 30 ns;
-		V_AS <= '0';
-		-- set the data
-		V_D  <= x"000" & b"0001";
-		wait for 30 ns;
-		V_DS <= (others => '0');
-		-- wait for data ack
-		wait until V_DTACK = '0';
-		-- acknowledge the transfer
-		V_AS <= '1';
-		V_DS <= (others => '1');
-		wait until V_DTACK = '1';
-		-- see if it's at the output
-		assert O_NIM = b"0001" report "##### Could not set NIM output to high" severity error;
-		wait for 100 ns;
-		-- now set it to low again
-		-- set desired address 
+		report "Set ACK low" severity note;
 		V_AM    <= b"101001";
 		V_A     <= (2 => '1', 1 => '1', others => '0');
 		V_LWORD <= '1';
