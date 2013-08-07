@@ -70,8 +70,7 @@ architecture arch1 of vitek_fpga_xc3s1000 is
 			   b_wr    : in    std_logic;
 			   b_addr  : in    std_logic_vector(vme_addr_size - 1 downto 0);
 			   b_din   : in    std_logic_vector(15 downto 0);
-			   b_dout  : out   std_logic_vector(15 downto 0);
-			   debug   : out   std_logic_vector(16 downto 1)
+			   b_dout  : out   std_logic_vector(15 downto 0)
 		);
 	end component vme_cpld_handler;
 
@@ -117,7 +116,8 @@ architecture arch1 of vitek_fpga_xc3s1000 is
 	signal eventid_status : std_logic_vector(10 downto 0);
 	signal timer_tick_1us : std_logic;
 
-	--signal debug : std_logic_vector(16 downto 1);
+	-- inverted (but correct) NIM signals
+	signal I_NIM_n, O_NIM_n : std_logic_vector(4 downto 1);
 
 begin
 
@@ -148,14 +148,22 @@ begin
 	D_LE  <= '0';
 	D_CLK <= '0';
 
+	-- the NIM I/O seems to be inverted
+	-- so reflect that here 
+	-- (the serial event receiver relies on that, 
+	-- otherwise it constantly detects a trigger)
+	O_NIM   <= not O_NIM_n;
+	I_NIM_n <= not I_NIM;
+
+	-- Clock Management stuff
+	-- we drive everything at 100MHz at the moment
+	-- pay attention to the eventid receiver and the timer ticks,
+	-- which rely on 100MHz as the clk!
 	dcm_1 : component dcm_60to100
 		port map(CLK60_IN   => CLK60_IN,
 			       CLK100_OUT => clk100,
 			       CLK60_OUT  => clk60,
 			       LOCKED_OUT => dcm_locked);
-	-- we drive everything at 100MHz at the moment
-	-- pay attention to the eventid receiver and the timer ticks,
-	-- which rely on 100MHz as the clk
 	clk <= clk100;
 
 	-- port b can be used to handle the VME data transparently (see ram_updater entity)
@@ -170,11 +178,7 @@ begin
 			       b_wr    => b_wr,
 			       b_addr  => b_addr,
 			       b_din   => b_din,
-			       b_dout  => b_dout,
-			       debug   => open);
-
-	--EO    <= debug;
-	--O_NIM <= (others => '0');
+			       b_dout  => b_dout);
 
 	-- ram updater stuff
 	-- we do not use the upper half of port b at the moment, 
@@ -182,8 +186,8 @@ begin
 	b_addr(4) <= '0';
 	ram_updater_1 : component ram_updater
 		port map(clk        => clk,
-			       O_NIM      => O_NIM,
-			       I_NIM      => I_NIM,
+			       O_NIM      => O_NIM_n,
+			       I_NIM      => I_NIM_n,
 			       EO         => EO,
 			       EI         => EI,
 			       b_wr       => b_wr,
@@ -197,8 +201,8 @@ begin
 	eventid_recv_1 : component eventid_recv
 		port map(CLK               => clk,
 			       TIMER_TICK_1US_IN => timer_tick_1us,
-			       SERIAL_IN         => I_NIM(2), -- second one is serial in
-			       EXT_TRG_IN        => I_NIM(1), -- first nim input is interrupt/trigger
+			       SERIAL_IN         => I_NIM_n(2), -- second one is serial in
+			       EXT_TRG_IN        => I_NIM_n(1), -- first nim input is interrupt/trigger
 			       EVENTID_OUT       => eventid,
 			       STATUS_OUT        => eventid_status);
 

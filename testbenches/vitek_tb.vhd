@@ -111,10 +111,11 @@ architecture arch1 of vitek_tb is
 	signal SWITCH1        : std_logic_vector(3 downto 0);
 
 	-- FPGA signals
-	signal F_D, V_D     : std_logic_vector(15 downto 0);
-	signal I_NIM, O_NIM : std_logic_vector(4 downto 1);
-	signal EI, EO       : std_logic_vector(16 downto 1);
-	signal D_OUT        : std_logic_vector(5 downto 1);
+	signal F_D, V_D         : std_logic_vector(15 downto 0);
+	signal I_NIM, O_NIM     : std_logic_vector(4 downto 1);
+	signal I_NIM_n, O_NIM_n : std_logic_vector(4 downto 1);
+	signal EI, EO           : std_logic_vector(16 downto 1);
+	signal D_OUT            : std_logic_vector(5 downto 1);
 
 	-- Port Mode signals, all in one
 	signal PORT_TDI_TCK_TMS : std_logic_vector(3 downto 1);
@@ -156,7 +157,11 @@ begin
 			       PORT_CLK  => PORT_CLK,
 			       SWITCH1   => SWITCH1);
 
-	-- instantiate FPGA, neglect the unneeded I/O (delay, NIM, ECL)
+	-- instantiate FPGA, neglect the unneeded I/O (delay, AVC µC)
+	-- Note that the NIM seems to be inverted, 
+	-- don't know where that happens in the schematic
+	I_NIM_n <= not I_NIM;
+	O_NIM <= not O_NIM_n;
 	D_OUT <= (others => '0');
 	FPGA_1 : vitek_fpga_xc3s1000
 		port map(CLK60_IN         => CLK,
@@ -167,8 +172,8 @@ begin
 			       UTMI_opmode1     => open,
 			       UTMI_txvalid     => open,
 			       LED_module       => open,
-			       O_NIM            => O_NIM,
-			       I_NIM            => I_NIM,
+			       O_NIM            => O_NIM_n,
+			       I_NIM            => I_NIM_n,
 			       EO               => EO,
 			       EI               => EI,
 			       A_X              => open,
@@ -188,6 +193,7 @@ begin
 			       C_F_in           => C_F_in,
 			       C_F_out          => C_F_out,
 			       I_A              => I_A(10 downto 1));
+	
 
 	-- instantiate some more ICs (to make tests more realistic)
 	VME_transceiver_1 : component SN74LVTH162245DL
@@ -588,7 +594,7 @@ begin
 		V_AS <= '1';
 		V_DS <= (others => '1');
 		wait until V_DTACK = '1';
-		-- see if it's at the output
+		-- see if it's at the output, note that the NIM I/O is inverted at the output
 		assert O_NIM = test_nim_out report "##### Set NIM output is incorrect" severity error;
 		-- wait a bit longer
 		t1 := now - t0;
