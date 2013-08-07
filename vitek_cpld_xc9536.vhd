@@ -2,9 +2,14 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use ieee.numeric_std.all;
 
-
 -- Note: This only fits into the VITEK CPLD if cpldfit is called with
--- '-inputs 20' and '-pterms 40' (maybe other values are better)
+-- '-inputs 20' and '-pterms 40'
+-- You can also use the '-exhaust' option to automatically 
+-- find options where cpldfit succeeds (used Xilinx ISE ver 14.3 lin64)
+
+-- BUGFIX: Call cpldfit with '-init high'. 
+-- This ensures that the first VME access works as expected.
+
 
 entity vitek_cpld_xc9536 is
 	port(
@@ -86,7 +91,7 @@ begin
 					-- go to the check address state, giving the latch enough time
 					-- to propagate I_AM and I_A
 					board_address_r <= I_A(15 downto 12);
-					port_mode_r <= I_A(11);
+					port_mode_r     <= I_A(11);
 					I_AM_r          <= I_AM;
 					state           <= s_check_address;
 				end if;
@@ -112,7 +117,7 @@ begin
 				end if;
 
 			when s_wait_for_datastrobe =>
-				V_DS_r <= V_DS;
+				V_DS_r    <= V_DS;
 				V_WRITE_r <= V_WRITE;
 				if V_DS_r(0) = '0' and V_DS_r(1) = '0' and port_mode_r = '0' then
 					-- the FPGA may drive the VME bus now (or read it)
