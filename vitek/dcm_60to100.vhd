@@ -93,7 +93,7 @@ begin
 			          DUTY_CYCLE_CORRECTION => TRUE,
 			          FACTORY_JF            => x"8080",
 			          PHASE_SHIFT           => 0,
-			          STARTUP_WAIT          => TRUE)
+			          STARTUP_WAIT          => FALSE)
 		port map(CLKFB    => CLKFB_IN,
 			       CLKIN    => CLK60_IBUFG,
 			       DSSEN    => '0',
