@@ -6,4 +6,10 @@
 # ignore Xilinx stuff
 _pace.ucf
 *.lfp
-
+*.log
+*.mcs
+*.prm
+*.sig
+*.cfi
+*.bit
+*.xsvf
