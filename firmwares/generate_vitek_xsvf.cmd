@@ -22,8 +22,7 @@ addDevice -p 1 -sprom xcf04s -file vitek_fpga_xcf04s.mcs
 # the bitstream here is bypassed, since only the PROM is programmed
 addDevice -p 2 -file vitek_fpga_xc3s1000.bit
 setCable -port xsvf -file "vitek_fpga_prom.xsvf"
-# maybe add -e (erase) and -v (verify) for troubleshooting
-# not adding it doubles the speed of programming the PROM (60s -> 30s time)
-program -p 1 -loadfpga
+# erase and verify seems to be a good idea
+program -e -v -p 1 -loadfpga
 closeCable
 quit
