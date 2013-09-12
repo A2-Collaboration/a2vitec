@@ -19,7 +19,7 @@ entity ram_updater is
 
 		-- event id stuff
 		EVENTID_IN : in  std_logic_vector(31 downto 0);
-		STATUS_IN  : in  std_logic_vector(10 downto 0)
+		STATUS_IN  : in  std_logic_vector(4 downto 0)
 	);
 end entity ram_updater;
 
@@ -28,7 +28,7 @@ architecture RTL of ram_updater is
 
 	-- signals needed to handle the IRQ/ACK signals
 	signal eventid_upper_reg       : std_logic_vector(31 downto 16);
-	signal status_reg              : std_logic_vector(10 downto 0);
+	signal status_reg              : std_logic_vector(4 downto 0);
 	signal ack_sig, ack_sig_prev   : std_logic;
 	signal irq, irq_prev, irq_edge : std_logic := '0';
 begin
@@ -85,7 +85,7 @@ begin
 					irq_edge <= '1';
 				elsif ack_sig_prev = '1' and ack_sig = '0' then
 					-- falling edge on ack (again 80ns period, much faster than VME)
-					-- clean the 
+					-- clear the interrupt edge detected bit again
 					irq_edge <= '0';
 				end if;
 				-- write lower eventid now (next address is b"100")
@@ -104,15 +104,15 @@ begin
 
 			when b"101" =>
 				-- previous address is b"100", next address is b"110"
-				-- write lower status word
+				-- write lower status word and 
 				b_wr  <= '1';
-				b_din <= irq_edge & x"0" & status_reg(10 downto 0);
+				b_din <= irq_edge & x"00" & b"00" & status_reg(4 downto 0);
 
 			when b"110" =>
 				-- previous address is b"101", next address is b"111"  
 				-- write upper status word (unused at the moment)
 				b_wr  <= '1';
-				b_din <= x"0000";       --status_reg(31 downto 16);
+				b_din <= x"0000";       
 
 			when b"111" =>
 				-- previous address is b"110", next address is b"000"

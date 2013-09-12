@@ -161,8 +161,8 @@ begin
 	-- Note that the NIM seems to be inverted, 
 	-- don't know where that happens in the schematic
 	I_NIM_n <= not I_NIM;
-	O_NIM <= not O_NIM_n;
-	D_OUT <= (others => '0');
+	O_NIM   <= not O_NIM_n;
+	D_OUT   <= (others => '0');
 	FPGA_1 : vitec_fpga_xc3s1000
 		port map(CLK60_IN         => CLK,
 			       UTMI_databus16_8 => open,
@@ -193,7 +193,6 @@ begin
 			       C_F_in           => C_F_in,
 			       C_F_out          => C_F_out,
 			       I_A              => I_A(10 downto 1));
-	
 
 	-- instantiate some more ICs (to make tests more realistic)
 	VME_transceiver_1 : component SN74LVTH162245DL
@@ -733,19 +732,16 @@ begin
 		-- see if it's at the output
 		assert O_NIM = b"0001" report "##### Could not set NIM output to high" severity error;
 		-- wait a bit longer
-		t1       := now - t0;
+		t1 := now - t0;
 		report "Done, took " & time'image(t1) severity note;
 		wait for 500 ns;
-		
 
 		--------------------------------------
-		-- Test the trigger/interrupt and the serial ID receiver
-		-- send the id
+		-- Send the serial ID
 		t0               := now;
 		test_serial_real := bit_reverse(test_serial(34 downto 3));
 		report "Sending the serial ID 0x" & slv2hex(test_serial_real) & " (LSB first)" severity note;
 		wait for 50 ns;
-
 		for i in test_serial'range loop
 			I_NIM(2) <= test_serial(i);
 			wait for period_serial;
@@ -753,6 +749,38 @@ begin
 		I_NIM(2) <= '0';
 		-- wait a bit longer
 		t1       := now - t0;
+		report "Done, took " & time'image(t1) severity note;
+		wait for 500 ns;
+
+		-------------------------------------------
+		-- Checking the event ID status (read status register)
+		t0 := now;
+		report "Checking the Event ID status: something received?" severity note;
+		-- set correct address
+		V_AS    <= '1';
+		V_AM    <= b"101001";
+		V_A     <= (3 => '1', 2 => '1', 1 => '0', others => '0');
+		V_LWORD <= '1';
+		V_WRITE <= '1';
+		V_D     <= (others => 'Z');
+		wait for 30 ns;
+		-- assert address strobe to tell the address
+		V_AS <= '0';
+		-- assert data strobe to request the data
+		V_DS <= (others => '0');
+		-- wait until data is present
+		wait until V_DTACK = '0';
+		-- immediately negate address strobe
+		V_AS <= '1';
+		-- id received since last ACK, start/stop bit there, parity ok, no error flag
+		assert V_D(4 downto 0) = b"11010" report "##### Event ID status not as expected (parity wrong?)" severity error;
+		report "Got the following: " & slv2hex(V_D) severity note;
+		-- acknowledge the data
+		V_DS <= (others => '1');
+		-- and wait for slave to release the data lines
+		wait until V_DTACK = '1';
+		-- wait a bit longer
+		t1 := now - t0;
 		report "Done, took " & time'image(t1) severity note;
 		wait for 500 ns;
 
@@ -849,7 +877,7 @@ begin
 		-------------------------------------------
 		-- Checking the event ID status (read status register)
 		t0 := now;
-		report "Checking the Event ID status" severity note;
+		report "Checking the Event ID status: IRQ reset?" severity note;
 		-- set correct address
 		V_AS    <= '1';
 		V_AM    <= b"101001";
@@ -868,9 +896,8 @@ begin
 		V_AS <= '1';
 		-- check received data
 		assert V_D(15) = '0' report "##### Interrupt was not reset by ACK" severity error;
-		-- no timeout, start/stop bit there, parity ok, no error flag
-		assert V_D(4 downto 0) = b"01010" report "##### Event ID status not as expected (parity wrong?)" severity error;
-		report "Got the following: " & slv2hex(V_D) severity note;
+		assert V_D(4) = '0' report "##### Serial ID Received was not reset by ACK" severity error;
+		
 		-- acknowledge the data
 		V_DS <= (others => '1');
 		-- and wait for slave to release the data lines
@@ -878,7 +905,8 @@ begin
 		-- wait a bit longer
 		t1 := now - t0;
 		report "Done, took " & time'image(t1) severity note;
-		wait for 500 ns;
+		wait for 500 ns;		
+
 
 		--------------------------------------
 		-- write something else on the bus
