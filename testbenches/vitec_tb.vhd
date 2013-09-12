@@ -1,16 +1,16 @@
 library IEEE;
 use ieee.std_logic_1164.all;
 
--- this entity "simulates" the VITEK board 
+-- this entity "simulates" the VITEC board 
 -- (and also the Trenz micromodule)
 -- it mainly tests the VME bus access
 use work.helpers_std.all;
 
-entity vitek_tb is
-end entity vitek_tb;
+entity vitec_tb is
+end entity vitec_tb;
 
-architecture arch1 of vitek_tb is
-	component vitek_cpld_xc9536
+architecture arch1 of vitec_tb is
+	component vitec_cpld_xc9536
 		port(A_CLK     : out std_logic;
 			   V_SYSCLK  : in  std_logic;
 			   V_DS      : in  std_logic_vector(1 downto 0);
@@ -27,9 +27,9 @@ architecture arch1 of vitek_tb is
 			   PORT_READ : out std_logic;
 			   PORT_CLK  : out std_logic;
 			   SWITCH1   : in  std_logic_vector(3 downto 0));
-	end component vitek_cpld_xc9536;
+	end component vitec_cpld_xc9536;
 
-	component vitek_fpga_xc3s1000
+	component vitec_fpga_xc3s1000
 		port(CLK60_IN         : in    std_logic;
 			   UTMI_databus16_8 : out   std_logic;
 			   UTMI_reset       : out   std_logic;
@@ -60,7 +60,7 @@ architecture arch1 of vitek_tb is
 			   C_F_out          : in    std_logic_vector(7 downto 4);
 
 			   I_A              : in    std_logic_vector(10 downto 1));
-	end component vitek_fpga_xc3s1000;
+	end component vitec_fpga_xc3s1000;
 
 	component SN74LVTH162245DL
 		generic(INPUTS : integer);
@@ -139,7 +139,7 @@ begin
 
 	-- instantiate CPLD
 	V_DTACK <= not DTACK;               -- there's a not in the schematics!
-	CPLD_1 : vitek_cpld_xc9536
+	CPLD_1 : vitec_cpld_xc9536
 		port map(A_CLK     => A_CLK,
 			       V_SYSCLK  => V_SYSCLK,
 			       V_DS      => V_DS,
@@ -163,7 +163,7 @@ begin
 	I_NIM_n <= not I_NIM;
 	O_NIM <= not O_NIM_n;
 	D_OUT <= (others => '0');
-	FPGA_1 : vitek_fpga_xc3s1000
+	FPGA_1 : vitec_fpga_xc3s1000
 		port map(CLK60_IN         => CLK,
 			       UTMI_databus16_8 => open,
 			       UTMI_reset       => open,

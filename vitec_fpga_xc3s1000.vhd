@@ -2,7 +2,7 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use ieee.numeric_std.all;
 
-entity vitek_fpga_xc3s1000 is
+entity vitec_fpga_xc3s1000 is
 	port(
 		-- signals local to the micromodule itself
 		-- this is the 60 MHz clock input (selected via UTMI_databus16_8)
@@ -26,8 +26,8 @@ entity vitek_fpga_xc3s1000 is
 		OHO_RCLK         : out   std_logic; -- 3x7 segment display
 		OHO_SCLK         : out   std_logic; -- 3x7 segment display
 		OHO_SER          : out   std_logic; -- 3x7 segment display
-		V_V25            : out   std_logic_vector(8 downto 1); -- another VITEK card, CMOS 2.5V bank
-		V_V33            : out   std_logic_vector(10 downto 9); -- another VITEK card CMOS 3.3V bank
+		V_V25            : out   std_logic_vector(8 downto 1); -- another VITEC card, CMOS 2.5V bank
+		V_V33            : out   std_logic_vector(10 downto 9); -- another VITEC card CMOS 3.3V bank
 
 		-- delay stuff
 		D_IN             : out   std_logic_vector(5 downto 1); -- to delay input
@@ -44,9 +44,9 @@ entity vitek_fpga_xc3s1000 is
 		C_F_out          : in    std_logic_vector(7 downto 4); -- from CPLD (= "out" port there)
 		I_A              : in    std_logic_vector(10 downto 1) -- VME address		
 	);
-end vitek_fpga_xc3s1000;
+end vitec_fpga_xc3s1000;
 
-architecture arch1 of vitek_fpga_xc3s1000 is
+architecture arch1 of vitec_fpga_xc3s1000 is
 	-- clock handling
 	signal clk, clk60, clk100 : std_logic;
 	signal dcm_locked         : std_logic;
@@ -138,8 +138,8 @@ begin
 	OHO_RCLK <= '0';                    -- 3x7 segment display
 	OHO_SCLK <= '0';                    -- 3x7 segment display
 	OHO_SER  <= '0';                    -- 3x7 segment display
-	V_V25    <= (others => '0');        -- another VITEK card
-	V_V33    <= (others => '0');        -- another VITEK card
+	V_V25    <= (others => '0');        -- another VITEC card
+	V_V33    <= (others => '0');        -- another VITEC card
 
 	D_IN  <= (others => '0');
 	D_D   <= '0';

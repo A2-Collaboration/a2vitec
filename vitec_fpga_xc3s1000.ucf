@@ -1,7 +1,7 @@
 # User Constraints File
-# for Xilinx Spartan XC3S1000 FTG256 on Trenz TE-140-04 on VITEK card
+# for Xilinx Spartan XC3S1000 FTG256 on Trenz TE-140-04 on VITEC card
 #
-# The order of the NETs is determined by the VITEK schematic
+# The order of the NETs is determined by the VITEC schematic
 # (Klaus Weindel, KPH Mainz) and are grouped according to FPGA banks.
 #
 # The referenced sheets correspond to Trenz schematic "SCH-TE0140-04.pdf",

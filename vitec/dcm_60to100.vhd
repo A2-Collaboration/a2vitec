@@ -11,7 +11,7 @@
 -- \   \  /  \ 
 --  \___\/\___\ 
 --
---Command: xaw2vhdl-intstyle /home/neiser/FPGA/vitek/xilinx-fpga/ipcore_dir/dcm_60to100.xaw -st dcm_60to100.vhd
+--Command: xaw2vhdl-intstyle /home/neiser/FPGA/vitec/xilinx-fpga/ipcore_dir/dcm_60to100.xaw -st dcm_60to100.vhd
 --Design Name: dcm_60to100
 --Device: xc3s1000-4ft256
 --

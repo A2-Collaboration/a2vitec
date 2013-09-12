@@ -25,12 +25,14 @@ available.
 The following steps should guide you through the process:
 
 1. Run Xilinx Impact inside this directory with `impact -batch
-generate_vitek_xsvf.cmd`. This batch file generates the file
-`vitek_fpga_prom.xsvf` (among other files) from the bitstream
-`vitek_fpga_xc3s1000.bit`.
+generate_vitec_xsvf.cmd`. This batch file generates the file
+`vitec_fpga_prom.xsvf` (among other files) from the bitstream
+`vitec_fpga_xc3s1000.bit` (use the gzipped version if you 
+don't have a better one)
 
-2. Copy `vitek_fpga_prom.xsvf` to `/opt/a2vme/build` on the VME CPUs.
+2. Copy `vitec_fpga_prom.xsvf` to `/opt/vitec/fpga` on the VME CPUs, but
+give it a version number (maybe the short hash of the a2fpga commit?).
 
 3. Run as root on the VME CPU whose VITEC card should be reprogrammed:
-`playxsvf /opt/a2vme/build/vitek_fpga_prom.xsvf`. This takes max. 60 s
-to finish.
+`playxsvf /opt/vitec/fpga/vitec_fpga_prom_[VERSION NUMBER].xsvf`. This 
+takes about 60 s to finish.

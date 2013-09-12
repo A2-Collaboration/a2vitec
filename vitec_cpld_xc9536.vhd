@@ -2,7 +2,7 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use ieee.numeric_std.all;
 
--- Note: This only fits into the VITEK CPLD if cpldfit is called with
+-- Note: This only fits into the VITEC CPLD if cpldfit is called with
 -- '-inputs 20' and '-pterms 40'
 -- You can also use the '-exhaust' option to automatically 
 -- find options where cpldfit succeeds (used Xilinx ISE ver 14.3 lin64)
@@ -11,9 +11,9 @@ use ieee.numeric_std.all;
 -- This ensures that the first VME access works as expected.
 
 
-entity vitek_cpld_xc9536 is
+entity vitec_cpld_xc9536 is
 	port(
-		-- the port names here follow the VITEK board
+		-- the port names here follow the VITEC board
 		-- schematic from Klaus Weindel
 		A_CLK     : out std_logic;      -- controls the VME address registers
 		V_SYSCLK  : in  std_logic;      -- 16MHz VME bus clock
@@ -33,9 +33,9 @@ entity vitek_cpld_xc9536 is
 		-- input for the address 0-f (binary coded)
 		SWITCH1   : in  std_logic_vector(3 downto 0)
 	);
-end vitek_cpld_xc9536;
+end vitec_cpld_xc9536;
 
-architecture arch1 of vitek_cpld_xc9536 is
+architecture arch1 of vitec_cpld_xc9536 is
 	signal clk : std_logic;
 
 	signal fpga_start           : std_logic;
@@ -136,7 +136,7 @@ begin
 					-- also "supports" single byte transfers (not really tested)
 
 					-- as in FPGA mode, when the master wants to read something (V_WRITE = '1'), 
-					-- the slave (=the VITEK) should drive the bus
+					-- the slave (=the VITEC) should drive the bus
 					if V_WRITE_r = '1' then
 						-- we simply put the status of the FF onto the bus
 						-- and acknowledge with a delayed DTACK
