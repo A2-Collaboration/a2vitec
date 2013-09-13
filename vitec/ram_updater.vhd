@@ -27,10 +27,12 @@ architecture RTL of ram_updater is
 	signal state : unsigned(2 downto 0) := (others => '0');
 
 	-- signals needed to handle the IRQ/ACK signals
-	signal eventid_upper_reg       : std_logic_vector(31 downto 16);
-	signal status_reg              : std_logic_vector(4 downto 0);
-	signal ack_sig, ack_sig_prev   : std_logic;
-	signal irq, irq_prev, irq_edge : std_logic := '0';
+	signal eventid_in_reg            : std_logic_vector(31 downto 0);
+	signal eventid_upper_reg         : std_logic_vector(31 downto 16);
+	signal status_in_reg, status_reg : std_logic_vector(4 downto 0);
+	signal ack_sig, ack_sig_prev     : std_logic;
+	signal irq, irq_prev, irq_edge   : std_logic := '0';
+
 begin
 	-- ack signal used to buffer its state in the ram
 	O_NIM(1) <= ack_sig;
@@ -48,6 +50,9 @@ begin
 		-- that results in an update cycle of 8*clockcycle = 80ns,
 		-- which is much faster than the VMEbus reads/writes
 		state <= state + 1;
+
+		EVENTID_IN_reg <= EVENTID_IN;
+		STATUS_IN_reg  <= STATUS_IN;
 
 		-- precise timing is needed here, and don't get confused who is writing what from where :)
 		-- reading from memory needs waiting one cycle after setting the address, thus previous address is relevant
@@ -74,8 +79,8 @@ begin
 				-- previous address is b"010", next address is b"100"
 				-- latch now the 32bit words from the eventid receiver, since they might change
 				-- during the next four states, thus we write the latched data into the RAM
-				status_reg        <= STATUS_IN;
-				eventid_upper_reg <= EVENTID_IN(31 downto 16); -- only upper half is needed 
+				status_reg        <= STATUS_IN_reg;
+				eventid_upper_reg <= EVENTID_IN_reg(31 downto 16); -- only upper half is needed 
 				-- use the upper bit b_din(15) as a edge detection on irq signal
 				irq               <= I_NIM(1);
 				irq_prev          <= irq;
@@ -90,7 +95,7 @@ begin
 				end if;
 				-- write lower eventid now (next address is b"100")
 				b_wr  <= '1';
-				b_din <= EVENTID_IN(15 downto 0);
+				b_din <= EVENTID_IN_reg(15 downto 0);
 
 			when b"100" =>
 				-- previous address is b"011", next address is b"101"
@@ -114,7 +119,7 @@ begin
 				-- upper 8 bits are the type. currently there's only "aa" (general purpose)
 				-- lower 8 bits give firmware revision, this is revision 1
 				b_wr  <= '1';
-				b_din <= x"aa01";       
+				b_din <= x"aa02";
 
 			when b"111" =>
 				-- previous address is b"110", next address is b"000"
