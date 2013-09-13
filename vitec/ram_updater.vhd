@@ -110,9 +110,11 @@ begin
 
 			when b"110" =>
 				-- previous address is b"101", next address is b"111"  
-				-- write upper status word (unused at the moment)
+				-- write firmware information:
+				-- upper 8 bits are the type. currently there's only "aa" (general purpose)
+				-- lower 8 bits give firmware revision, this is revision 1
 				b_wr  <= '1';
-				b_din <= x"0000";       
+				b_din <= x"aa01";       
 
 			when b"111" =>
 				-- previous address is b"110", next address is b"000"
