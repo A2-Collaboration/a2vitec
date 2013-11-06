@@ -72,7 +72,7 @@ begin
 			when b"010" =>
 				-- previous address is b"001", next address is b"011"  
 				-- output ECL from memory
-				EO   <= b_dout;
+				--EO   <= b_dout;
 				b_wr <= '0';
 
 			when b"011" =>
@@ -111,6 +111,7 @@ begin
 				-- previous address is b"100", next address is b"110"
 				-- write lower status word and 
 				b_wr  <= '1';
+				EO <= irq_edge & x"00" & b"00" & status_reg(4 downto 0);
 				b_din <= irq_edge & x"00" & b"00" & status_reg(4 downto 0);
 
 			when b"110" =>
