@@ -58,7 +58,7 @@ architecture arch1 of vitec_fpga_xc3s1000 is
 	end component dcm_60to100;
 
 	-- VME CPLD handling
-	constant vme_addr_size : integer := 4; -- 2^4=16 vme registers maximum (currently)
+	constant vme_addr_size : integer := 5; -- 2^5=32 vme registers maximum (currently)
 	component vme_cpld_handler
 		generic(vme_addr_size : integer);
 		port(clk     : in    std_logic;
@@ -82,11 +82,13 @@ architecture arch1 of vitec_fpga_xc3s1000 is
 			   EO         : out std_logic_vector(16 downto 1);
 			   EI         : in  std_logic_vector(16 downto 1);
 			   b_wr       : out std_logic;
-			   b_addr     : out std_logic_vector(2 downto 0);
+			   b_addr     : out std_logic_vector(3 downto 0);
 			   b_din      : out std_logic_vector(15 downto 0);
 			   b_dout     : in  std_logic_vector(15 downto 0);
 			   EVENTID_IN : in  std_logic_vector(31 downto 0);
-			   STATUS_IN  : in  std_logic_vector(4 downto 0));
+			   EVENTID_STATUS_IN  : in  std_logic_vector(4 downto 0);
+			   BITPATTERN_IN : in  std_logic_vector(31 downto 0);
+			   BITPATTERN_STATUS_IN  : in  std_logic_vector(4 downto 0));
 	end component ram_updater;
 
 	-- eventid receiver
@@ -114,7 +116,11 @@ architecture arch1 of vitec_fpga_xc3s1000 is
 	-- event id receiver 
 	signal eventid        : std_logic_vector(31 downto 0);
 	signal eventid_status : std_logic_vector(4 downto 0);
-	--signal timer_tick_1us : std_logic;
+	
+	-- bitpattern receiver 
+	signal bitpattern        : std_logic_vector(31 downto 0);
+	signal bitpattern_status : std_logic_vector(4 downto 0);
+
 
 	-- inverted (but correct) NIM signals
 	signal I_NIM_n, O_NIM_n : std_logic_vector(4 downto 1);
@@ -183,7 +189,7 @@ begin
 	-- ram updater stuff
 	-- we do not use the upper half of port b at the moment, 
 	-- thus via port a testing of VME access is possible at those addresses
-	b_addr(4) <= '0';
+	b_addr(5) <= '0';
 	ram_updater_1 : component ram_updater
 		port map(clk        => clk,
 			       O_NIM      => O_NIM_n,
@@ -191,13 +197,15 @@ begin
 			       EO         => EO,
 			       EI         => EI,
 			       b_wr       => b_wr,
-			       b_addr     => b_addr(3 downto 1),
+			       b_addr     => b_addr(4 downto 1),
 			       b_din      => b_din,
 			       b_dout     => b_dout,
 			       EVENTID_IN => eventid,
-			       STATUS_IN  => eventid_status);
+			       EVENTID_STATUS_IN  => eventid_status,
+			       BITPATTERN_IN => bitpattern,
+			       BITPATTERN_STATUS_IN  => bitpattern_status);
 
-	-- event id receiver including timer tick generation
+	-- event id receiver
 	eventid_recv_1 : component eventid_recv
 		port map(CLK               => clk,
 			       --TIMER_TICK_1US_IN => timer_tick_1us,
@@ -206,10 +214,15 @@ begin
 			       EVENTID_OUT       => eventid,
 			       STATUS_OUT        => eventid_status);
 
---	timer_ticks_1 : component timer_ticks
---		generic map(ticks => 100)
---		port map(clk  => clk,
---			       tick => timer_tick_1us);
+
+	-- bit pattern receiver (same as event id receiver)
+	bitpattern_recv_1 : component eventid_recv
+		port map(CLK               => clk,
+			       --TIMER_TICK_1US_IN => timer_tick_1us,
+			       SERIAL_IN         => I_NIM_n(3), -- third nim input is bitpattern in
+			       ACK_IN            => O_NIM_n(1), -- first nim output is ACK (falling edge resets it)
+			       EVENTID_OUT       => bitpattern,
+			       STATUS_OUT        => bitpattern_status);
 
 end arch1;
 
