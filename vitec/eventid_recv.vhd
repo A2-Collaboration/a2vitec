@@ -50,7 +50,7 @@ architecture arch1 of eventid_recv is
 
 	signal id_recv : std_logic; -- high if "new" serial id has been received since last falling edge of ACK
 
-	type state_t is (IDLE, WAIT1, WAIT2, WAIT3, READ_BIT, WAIT5, WAIT6, WAIT7, WAIT8, FINISH);
+	type state_t is (IDLE, WAIT1, WAIT2, WAIT3, WAIT4, READ_BIT, WAIT6, WAIT7, WAIT8, FINISH);
 	signal state : state_t := IDLE;
 
 begin
@@ -92,6 +92,8 @@ begin
 				when WAIT2 =>
 					state <= WAIT3;
 				when WAIT3 =>
+					state <= WAIT4;
+				when WAIT4 =>
 					state <= READ_BIT;
 
 				when READ_BIT =>
@@ -100,18 +102,16 @@ begin
 					bitcnt    <= bitcnt - 1;
 					-- we fill the shift_reg LSB first since this way the trg id arrives
 					shift_reg <= reg_SERIAL_IN & shift_reg(shift_reg'high downto 1);
-					state     <= WAIT5;
+					state     <= WAIT6;
 
-				when WAIT5 =>
+				when WAIT6 =>
 					-- check if we're done reading
 					if bitcnt = 0 then
 						state <= FINISH;
 					else
-						state <= WAIT6;
+						state <= WAIT7;
 					end if;
 
-				when WAIT6 =>
-					state <= WAIT7;
 				when WAIT7 =>
 					state <= WAIT8;
 				when WAIT8 =>
