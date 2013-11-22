@@ -238,6 +238,8 @@ begin
 		-- note that over the serial line the least significant bit is sent first!
 		constant test_serial      : std_logic_vector(35 downto 1) := b"1" & bit_reverse(x"deadbeef") & b"01";
 		variable test_serial_real : std_logic_vector(31 downto 0);
+		constant test_bitpattern      : std_logic_vector(35 downto 1) := b"1" & bit_reverse(x"abcddcba") & b"01";
+		variable test_bitpattern_real : std_logic_vector(31 downto 0);
 		variable t0, t1           : time;
 	begin
 		-- after some setup time, set default values
@@ -659,16 +661,32 @@ begin
 		t1 := now - t0;
 		report "Done, took " & time'image(t1) severity note;
 		wait for 500 ns;
+		
+		--------------------------------------
+		-- Test the trigger/interrupt and the serial receivers (bitpattern/eventid)
+		-- Send the bitpattern before the IRQ
+		t0               := now;
+		test_bitpattern_real := bit_reverse(test_bitpattern(34 downto 3));
+		report "Sending the bitpattern 0x" & slv2hex(test_bitpattern_real) & " (LSB first)" severity note;
+		wait for 50 ns;
+		for i in test_bitpattern'range loop
+			I_NIM(3) <= test_bitpattern(i);
+			wait for period_serial;
+		end loop;
+		I_NIM(3) <= '0';
+		-- wait a bit longer
+		t1       := now - t0;
+		report "Done, took " & time'image(t1) severity note;
+		wait for 500 ns;
 
 		--------------------------------------
-		-- Test the trigger/interrupt and the serial ID receiver
 		-- send the interrupt
 		t0 := now;
 		report "Sending an interrupt" severity note;
 		I_NIM <= (others => '0');
 		wait for 50 ns;
 		I_NIM(1) <= '1';
-		wait for 200 ns;                -- interrupt must be at least 80ns high
+		wait for 200 ns;                -- interrupt must be at least 160ns high
 		I_NIM(1) <= '0';
 		wait for 1 us;
 		-- wait a bit longer
@@ -677,9 +695,9 @@ begin
 		wait for 500 ns;
 
 		-------------------------------------------
-		-- Checking the trigger (read status register)
+		-- Checking the trigger/bitpattern (read status register)
 		t0 := now;
-		report "Checking the interrupt" severity note;
+		report "Checking the interrupt and the bitpattern status" severity note;
 		-- set correct address
 		V_AS    <= '1';
 		V_AM    <= b"101001";
@@ -698,6 +716,9 @@ begin
 		V_AS <= '1';
 		-- check received data
 		assert V_D(15) = '1' report "##### Interrupt was not received" severity error;
+		assert V_D(12 downto 8) = b"11010" report "##### Bitpattern status not as expected (parity wrong?)" severity error;
+		report "Got the following: " & slv2hex(V_D) severity note;
+		
 		-- acknowledge the data
 		V_DS <= (others => '1');
 		-- and wait for slave to release the data lines
@@ -706,6 +727,70 @@ begin
 		t1 := now - t0;
 		report "Done, took " & time'image(t1) severity note;
 		wait for 500 ns;
+
+		
+		-------------------------------------------
+		-- Reading the bitpattern over VME (lower)
+		t0 := now;
+		report "Reading bitpattern over VME (lower)" severity note;
+		-- set correct address
+		V_AS    <= '1';
+		V_AM    <= b"101001";
+		V_A     <= (4 => '1', 2 => '0', 1 => '0', others => '0');
+		V_LWORD <= '1';
+		V_WRITE <= '1';
+		V_D     <= (others => 'Z');
+		wait for 30 ns;
+		-- assert address strobe to tell the address
+		V_AS <= '0';
+		-- assert data strobe to request the data
+		V_DS <= (others => '0');
+		-- wait until data is present
+		wait until V_DTACK = '0';
+		-- immediately negate address strobe
+		V_AS <= '1';
+		-- check received data
+		assert V_D = test_bitpattern_real(15 downto 0) report "##### Lower word of bitpattern is incorrect" severity error;
+		-- acknowledge the data
+		V_DS <= (others => '1');
+		-- and wait for slave to release the data lines
+		wait until V_DTACK = '1';
+		-- wait a bit longer
+		t1 := now - t0;
+		report "Done, took " & time'image(t1) severity note;
+		wait for 500 ns;
+
+		-------------------------------------------
+		-- Reading the bitpattern over VME (upper)
+		t0 := now;
+		report "Reading bitpattern over VME (upper)" severity note;
+		-- set correct address
+		V_AS    <= '1';
+		V_AM    <= b"101001";
+		V_A     <= (4 => '1', 2 => '0', 1 => '1', others => '0');
+		V_LWORD <= '1';
+		V_WRITE <= '1';
+		V_D     <= (others => 'Z');
+		wait for 30 ns;
+		-- assert address strobe to tell the address
+		V_AS <= '0';
+		-- assert data strobe to request the data
+		V_DS <= (others => '0');
+		-- wait until data is present
+		wait until V_DTACK = '0';
+		-- immediately negate address strobe
+		V_AS <= '1';
+		-- check received data
+		assert V_D = test_bitpattern_real(31 downto 16) report "##### Upper word of bitpattern is incorrect" severity error;
+		-- acknowledge the data
+		V_DS <= (others => '1');
+		-- and wait for slave to release the data lines
+		wait until V_DTACK = '1';
+		-- wait a bit longer
+		t1 := now - t0;
+		report "Done, took " & time'image(t1) severity note;
+		wait for 500 ns;
+
 
 		--------------------------------------
 		-- Set ACK signal high (readout of other modules started)
@@ -897,6 +982,7 @@ begin
 		-- check received data
 		assert V_D(15) = '0' report "##### Interrupt was not reset by ACK" severity error;
 		assert V_D(4) = '0' report "##### Serial ID Received was not reset by ACK" severity error;
+		assert V_D(12) = '0' report "##### Bitpattern Received was not reset by ACK" severity error;
 		
 		-- acknowledge the data
 		V_DS <= (others => '1');

@@ -126,7 +126,7 @@ begin
 				-- previous address is b"0100", next address is b"0110"
 				-- write lower status word and 
 				b_wr  <= '1';
-				b_din <= irq_edge & x"00" & b"00" & eventid_status_reg(4 downto 0);
+				b_din <= irq_edge & b"00" & bitpattern_status_reg & b"000" & eventid_status_reg;
 
 			when b"0110" =>
 				-- previous address is b"0101", next address is b"0111"  
