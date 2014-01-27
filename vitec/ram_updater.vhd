@@ -132,9 +132,9 @@ begin
 				-- previous address is b"0101", next address is b"0111"  
 				-- write firmware information:
 				-- upper 8 bits are the type. currently there's only "aa" (general purpose)
-				-- lower 8 bits give firmware revision, this is revision 1
+				-- lower 8 bits give firmware revision
 				b_wr  <= '1';
-				b_din <= x"aa04";
+				b_din <= x"aa05";
 
 			when b"0111" =>
 				-- previous address is b"0110", next address is b"1000"

@@ -994,6 +994,23 @@ begin
 		wait for 500 ns;		
 
 
+    -------------------------------------------
+		-- Trigger the output of event ID on ECL OUT
+		t0 := now;
+		report "Trigger the output of event ID on ECL OUT" severity note;
+		I_NIM(4) <= '1';
+		wait for 100ns;
+		I_NIM(4) <= '0';
+		wait for 100ns;
+		report "Compare 16bit of event id" severity note;
+		assert EO = test_serial_real(15 downto 0) report "##### Lower word of serial ID at ECL out is incorrect" severity error;
+		
+		-- wait a bit longer
+		t1 := now - t0;
+		report "Done, took " & time'image(t1) severity note;
+		wait for 500 ns;		
+
+
 		--------------------------------------
 		-- write something else on the bus
 		V_WRITE <= '0';

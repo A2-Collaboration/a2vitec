@@ -125,6 +125,13 @@ architecture arch1 of vitec_fpga_xc3s1000 is
 	-- inverted (but correct) NIM signals
 	signal I_NIM_n, O_NIM_n : std_logic_vector(4 downto 1);
 
+	-- debug signals
+	signal ack, ack_prev : std_logic := '0';
+	signal trig, trig_prev, trig_seen : std_logic := '0';
+	signal eventid_lsb    : std_logic_vector(15 downto 0);
+	constant timeoutcnt_Max : integer														:= 127;
+	signal timeoutcnt				: integer range 0 to timeoutcnt_Max := timeoutcnt_Max;
+	
 begin
 
 	-- Configure USB chip on micromodule (UTMI USB3250), 
@@ -194,7 +201,7 @@ begin
 		port map(clk        => clk,
 			       O_NIM      => O_NIM_n,
 			       I_NIM      => I_NIM_n,
-			       EO         => EO,
+			       EO         => open,
 			       EI         => EI,
 			       b_wr       => b_wr,
 			       b_addr     => b_addr(4 downto 1),
@@ -224,5 +231,42 @@ begin
 			       EVENTID_OUT       => bitpattern,
 			       STATUS_OUT        => bitpattern_status);
 
+  -- some debug process which saves the event id
+	-- on falling edge of ACK, and applies it to EO
+	-- (for some time only!)
+	io_1 : process is
+	begin
+		wait until rising_edge(clk);
+
+		-- store event id on falling edge of ACK
+		ack <= O_NIM_n(1);
+		ack_prev <= ack;
+		if ack = '0' and ack_prev = '1' then
+			eventid_lsb <= eventid(15 downto 0);
+		end if;	
+
+		-- output of the event id,
+		-- on rising edge of 4th NIM input
+		-- for timeoutcnt clock cycles
+		trig <= I_NIM_n(4);
+		trig_prev <= trig;
+		if trig = '1' and trig_prev = '0' then
+			trig_seen <= '1';
+			timeoutcnt <= timeoutcnt_Max;
+		end if;	
+
+		if trig_seen = '1' then
+			if timeoutcnt > 0 then
+				EO <= eventid_lsb;
+				timeoutcnt <= timeoutcnt-1;
+			else
+				trig_seen <= '0';
+			end if;
+		else
+			EO <= (others => '0');
+		end if;
+		
+	end process;	
+	
 end arch1;
 
