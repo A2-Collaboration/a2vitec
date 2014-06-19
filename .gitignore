@@ -1,0 +1,4 @@
+# ignoring Sigasi stuff
+/.library_mapping.xml
+/.project
+/.settings/
